@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>60-Day Career Sprint</title>
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0B1120">
+<link rel="manifest" href="/manifest.json">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:#0B1120;color:#E2E8F0;font-family:'Outfit',sans-serif;overflow-x:hidden;min-height:100dvh}
+button{font-family:inherit}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:#0B1120}::-webkit-scrollbar-thumb{background:#1E293B;border-radius:2px}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useCallback}=React;
+
+const CAT={
+  lab:{label:"Hands-On Lab",color:"#3B82F6"},
+  study:{label:"Study",color:"#8B5CF6"},
+  cert:{label:"Credential",color:"#10B981"},
+  interview:{label:"Interview Prep",color:"#F59E0B"},
+  career:{label:"Career Action",color:"#EF4444"},
+  review:{label:"Review",color:"#6366F1"},
+};
+
+const HABITS=[
+  {id:"h1",text:"30 min hands-on lab time",icon:"⌨️"},
+  {id:"h2",text:"Read one admin changelog or blog post",icon:"📰"},
+  {id:"h3",text:"Practice one interview answer out loud",icon:"🎤"},
+];
+
+const PHASES=[
+  {days:[1,7],title:"Lab Setup + Foundation",icon:"🔧",color:"#0EA5E9"},
+  {days:[8,14],title:"Entra ID Deep-Dive",icon:"🛡️",color:"#8B5CF6"},
+  {days:[15,21],title:"Intune + Google Sprint",icon:"📱",color:"#10B981"},
+  {days:[22,30],title:"Integration + Interview Prep",icon:"🎯",color:"#F59E0B"},
+  {days:[31,60],title:"Accelerate + Certify + Apply",icon:"🚀",color:"#EF4444"},
+];
+
+const DAYS=[
+  {day:1,label:"Launch Day",tasks:[
+    {id:"d1t1",text:"Join Microsoft 365 Developer Program and provision your E5 instant sandbox",cat:"lab",steps:[
+      "Go to developer.microsoft.com/en-us/microsoft-365/dev-program",
+      "Click 'Join Now' — sign in with your work Microsoft account (your Quarles & Brady email may work) or a personal Microsoft account",
+      "Fill out the profile: for 'primary focus' select 'Identity and Access Management' and 'Device Management'",
+      "When prompted, choose 'Instant Sandbox' (not configurable) — this comes pre-loaded with 25 test users, Teams, SharePoint, and sample data",
+      "Choose your admin username and password — WRITE THESE DOWN. Your tenant will be something like yourname@yourdomain.onmicrosoft.com",
+      "If you see 'You don't currently qualify' — try Path B: go to azure.microsoft.com/free, create a free Azure account, then start a Microsoft 365 Business Premium 30-day trial from admin.microsoft.com",
+      "Provisioning takes 1-5 minutes. You'll get a confirmation page with your new tenant details"
+    ]},
+    {id:"d1t2",text:"Log into your new tenant — bookmark admin.microsoft.com, entra.microsoft.com, intune.microsoft.com",cat:"lab",steps:[
+      "Open an Incognito/InPrivate browser window (important — keeps your personal and dev accounts separate)",
+      "Go to admin.microsoft.com — sign in with your new dev tenant admin credentials",
+      "Bookmark this page — this is your Microsoft 365 Admin Center (user management, licenses, billing)",
+      "In a new tab, go to entra.microsoft.com — bookmark it. This is your Entra ID portal (identity, groups, CA policies, app registrations)",
+      "In a new tab, go to intune.microsoft.com — bookmark it. This is your Intune portal (device management, compliance, apps)",
+      "In a new tab, go to security.microsoft.com — bookmark it. This is your security portal (Defender, alerts, incidents)",
+      "Take 10 minutes to click through the left-hand navigation of EACH portal — just get familiar with what's where"
+    ]},
+    {id:"d1t3",text:"Enable the Entra ID P2 free trial inside your tenant",cat:"lab",steps:[
+      "Go to entra.microsoft.com → sign in with your dev tenant admin account",
+      "In the left menu, click 'Identity' → 'Overview'",
+      "Look for a banner that says 'Try Entra ID P2' or go to 'Licenses' → 'All Products' → 'Try/Buy'",
+      "If no banner: go to admin.microsoft.com → Billing → Purchase Services → search for 'Entra ID P2' or 'Azure AD Premium P2'",
+      "Click 'Start free trial' — this gives you 30 days of P2 features (Conditional Access, PIM, Identity Protection, Access Reviews)",
+      "After activating, go to Licenses → Entra ID P2 → click 'Assign' → assign a P2 license to your admin account AND a few test users",
+      "Without P2 assigned to users, features like Conditional Access risk policies won't work for those users"
+    ]},
+  ]},
+  {day:2,label:"Build Your Test Environment",tasks:[
+    {id:"d2t1",text:"Create 10 test users across 3 departments (Legal, Sales, IT) with proper attributes",cat:"lab",steps:[
+      "Go to entra.microsoft.com → 'Users' → 'All users' → '+ New user' → 'Create new user'",
+      "For each user, fill in: Display name (e.g., 'Alex Legal'), User principal name (e.g., alex.legal@yourdomain.onmicrosoft.com), auto-generate a password",
+      "CRITICAL — click 'Properties' tab and fill in: Department (Legal, Sales, or IT), Job title (Attorney, Sales Rep, IT Technician), Usage location (United States — required for license assignment)",
+      "Create about 4 Legal users, 3 Sales users, 3 IT users",
+      "After creating, go to each user → 'Licenses' → assign them an M365 E5 license (you have 25)",
+      "Pro tip: if your instant sandbox already has sample users, you can edit their properties instead of creating new ones. Go to each existing user → Properties → edit Department and Job Title"
+    ]},
+    {id:"d2t2",text:"Create 3 security groups: SG-Legal, SG-Sales, SG-IT and assign members",cat:"lab",steps:[
+      "Go to entra.microsoft.com → 'Groups' → 'All groups' → '+ New group'",
+      "Group type: Security | Group name: SG-Legal | Membership type: Assigned",
+      "Under 'Members' → click 'No members selected' → search for and add your Legal department test users → click 'Create'",
+      "Repeat for SG-Sales (add Sales users) and SG-IT (add IT users)",
+      "These are 'Assigned' groups meaning you manually control membership. This is important to understand — you'll create a 'Dynamic' group next which auto-populates"
+    ]},
+    {id:"d2t3",text:"Create 1 dynamic group with a rule (e.g., department equals Sales)",cat:"lab",steps:[
+      "Go to entra.microsoft.com → 'Groups' → 'All groups' → '+ New group'",
+      "Group type: Security | Group name: DG-Sales-Auto | Membership type: Dynamic User",
+      "Click 'Add dynamic query' — the rule builder opens",
+      "Set: Property = 'department' | Operator = 'Equals' | Value = 'Sales'",
+      "Click 'Validate rules' tab → select one of your Sales users → click 'Validate' — it should show them as a match",
+      "Click 'Save' → 'Create'",
+      "Wait 5-15 minutes and then check the group members — it should auto-populate with all users whose Department = Sales",
+      "WHY THIS MATTERS: Dynamic groups are used everywhere in real environments to auto-assign licenses, policies, and apps based on user attributes. Interviewers WILL ask about this"
+    ]},
+  ]},
+  {day:3,label:"Identity Foundations",tasks:[
+    {id:"d3t1",text:"Create an Administrative Unit scoped to one department",cat:"lab",steps:[
+      "Go to entra.microsoft.com → 'Identity' → 'Roles & admins' → 'Admin units'",
+      "Click '+ Add' → Name: 'Legal Department AU' → click 'Next'",
+      "On the 'Assign roles' page, click 'Next' (we'll do this after)",
+      "Click 'Review + create' → 'Create'",
+      "Now open the AU you just created → click 'Members' → '+ Add member' → add all your Legal department users",
+      "Go back to the AU → 'Roles and administrators' → click 'User Administrator' → '+ Add assignments' → add one of your IT users",
+      "That IT user can now manage ONLY the users in the Legal AU — not all users in the tenant. This is scoped delegation",
+      "WHY THIS MATTERS: Administrative Units let you delegate admin rights to specific user scopes without giving Global Admin. This is a key concept for large organizations and interview favorite"
+    ]},
+    {id:"d3t2",text:"Register a test application in Entra → App Registrations",cat:"lab",steps:[
+      "Go to entra.microsoft.com → 'Applications' → 'App registrations' → '+ New registration'",
+      "Name: 'Test SaaS App' | Supported account types: 'Accounts in this organizational directory only' | Redirect URI: leave blank for now",
+      "Click 'Register' — you now have an app with an Application (client) ID and a Directory (tenant) ID",
+      "Click 'Certificates & secrets' → '+ New client secret' → Description: 'Test secret' → Expiry: 6 months → 'Add'",
+      "COPY THE SECRET VALUE NOW — you can never see it again after leaving this page",
+      "Click 'API permissions' → '+ Add a permission' → 'Microsoft Graph' → 'Delegated permissions' → search for 'User.Read' → 'Add permissions'",
+      "WHY THIS MATTERS: Every SaaS app integration starts with an App Registration. Understanding Client ID, tenant ID, secrets, and API permissions is foundational for SSO and SCIM setup. Interviewers will ask you to walk through this"
+    ]},
+    {id:"d3t3",text:"Start MS Learn path: SC-300 — complete Module 1 (Identity concepts)",cat:"study",steps:[
+      "Go to learn.microsoft.com/en-us/training/paths/implement-identity-management-solution/",
+      "Click the first module: 'Explore identity in Microsoft Entra ID'",
+      "Work through ALL units in the module — read each page, don't skip. This covers: identity types, authentication vs authorization, identity providers, and federation concepts",
+      "If there's a sandbox exercise, DO IT — don't just read the instructions",
+      "Take notes on any term you don't fully understand — you'll encounter them in interviews",
+      "Target time: 60-90 minutes for Module 1"
+    ]},
+  ]},
+  {day:4,label:"Google Workspace Setup",tasks:[
+    {id:"d4t1",text:"Buy a cheap domain ($1–12 on Namecheap/Squarespace — .xyz or .site)",cat:"lab",steps:[
+      "Go to namecheap.com or domains.squarespace.com",
+      "Search for a domain like 'yourname-lab.xyz' or 'yourname-test.site' — these are typically $1-3/year",
+      "Purchase the domain — you just need basic DNS control, no hosting required",
+      "After purchase, find the DNS management page (Namecheap: Dashboard → Domain List → Manage → Advanced DNS)",
+      "You'll need to add Google's MX records here during the Workspace setup — Google walks you through it"
+    ]},
+    {id:"d4t2",text:"Sign up for Google Workspace 14-day trial (Business Standard or Plus)",cat:"lab",steps:[
+      "Go to workspace.google.com → click 'Start free trial'",
+      "Choose 'Business Standard' (includes advanced admin, DLP, Vault, and endpoint management — more to practice with than Starter)",
+      "Enter your business name (anything — 'Lab Testing Inc'), number of employees (just you), and your NEW domain from the previous step",
+      "Create your admin account: admin@yourdomain.xyz (or whatever your domain is)",
+      "Google will ask you to verify domain ownership — they'll give you a TXT record to add to your domain's DNS settings",
+      "Go to your domain registrar's DNS settings → Add a TXT record with the value Google provides → Save",
+      "DNS propagation can take 5-60 minutes. Google will check automatically",
+      "Once verified, you'll land in the Google Admin Console at admin.google.com — THIS IS YOUR PLAYGROUND for the next 14 days"
+    ]},
+    {id:"d4t3",text:"Log into admin.google.com — explore every top-level menu section",cat:"lab",steps:[
+      "Go to admin.google.com with your new admin credentials",
+      "Click through EVERY section in the left sidebar and spend 2-3 min in each just reading what's available:",
+      "• Dashboard — overview of your domain, alerts, quick stats",
+      "• Directory → Users — where you create/manage users (equivalent of Entra Users)",
+      "• Directory → Organizational Units — THIS IS KEY. OUs in Google = the primary way to scope policies (like GPOs in AD)",
+      "• Apps → Google Workspace — per-app settings (Gmail, Drive, Meet, etc.)",
+      "• Security → Overview — security dashboard, 2SV status, threat insights",
+      "• Security → Authentication — password policies, 2-Step Verification settings",
+      "• Devices — endpoint management (mobile and desktop)",
+      "• Rules — data protection and DLP rules",
+      "• Account — billing, domains, data migration",
+      "Spend 30-45 minutes just exploring. Don't configure anything yet — just understand the layout"
+    ]},
+  ]},
+  {day:5,label:"Google Admin Basics",tasks:[
+    {id:"d5t1",text:"Create 5 test users and 3 Organizational Units (OUs) in Google Admin Console",cat:"lab",steps:[
+      "Go to admin.google.com → Directory → Organizational units",
+      "Click the '+' to create a child OU under your top-level org. Create: 'Legal', 'Sales', 'IT'",
+      "Now go to Directory → Users → 'Add new user'",
+      "Create 5 test users — for each one, set First name, Last name, primary email",
+      "IMPORTANT: After creating each user, click on their name → click 'User information' → move them to the correct OU (Legal, Sales, or IT)",
+      "Moving users to OUs matters because POLICIES ARE APPLIED PER OU in Google. A user in the 'Legal' OU gets Legal's policies. This is the Google equivalent of linking a GPO to an OU in AD",
+      "Compare mentally: in Microsoft, you assign policies to GROUPS. In Google, you assign policies to OUs (and sometimes groups). This distinction comes up in interviews"
+    ]},
+    {id:"d5t2",text:"Install GAM (Google Admin Manager) CLI tool and run: gam print users",cat:"lab",steps:[
+      "GAM is a free, open-source command-line tool for Google Workspace administration — it's like PowerShell for Google",
+      "Go to github.com/GAM-team/GAM/wiki — follow the installation instructions for your OS",
+      "During setup, GAM will ask you to authorize it with your Google Workspace admin account — follow the OAuth prompts",
+      "Once installed, open your terminal and run: gam print users",
+      "You should see a list of all users in your Google Workspace domain — names, emails, OU paths, status",
+      "Try: gam info user admin@yourdomain.xyz — this shows detailed info about one user",
+      "Try: gam print orgs — this lists all your OUs",
+      "GAM is what separates a junior Google admin from a senior one. Being able to say 'I use GAM for bulk operations' in an interview is powerful"
+    ]},
+    {id:"d5t3",text:"Continue SC-300 MS Learn — complete Module 2 (Authentication)",cat:"study",steps:[
+      "Go back to learn.microsoft.com and continue the SC-300 learning path",
+      "Module 2 covers: authentication methods (passwords, MFA, passwordless), self-service password reset (SSPR), and Entra ID multi-factor authentication",
+      "Pay special attention to: the difference between MFA methods (Authenticator app, FIDO2 key, phone SMS, Windows Hello for Business)",
+      "When you read about SSPR, actually configure it in your dev tenant: go to entra.microsoft.com → Protection → Password reset → enable for a test group",
+      "Target time: 60-90 minutes"
+    ]},
+  ]},
+  {day:6,label:"Study + Explore",tasks:[
+    {id:"d6t1",text:"Start MS Learn path: MD-102 Endpoint Administrator — Module 1",cat:"study",steps:[
+      "Go to learn.microsoft.com/en-us/training/paths/explore-endpoint-management/",
+      "This is the Intune/endpoint management learning path — Module 1 covers: what Intune does, co-management with SCCM, tenant setup, and enrollment options",
+      "Key concepts to internalize: MDM (full device management — you control the whole device) vs MAM (app-level management — you only control corporate apps, not the device)",
+      "Understand the enrollment methods: automatic enrollment for corporate devices, user-driven for BYOD, Autopilot for zero-touch",
+      "Target time: 45-60 minutes"
+    ]},
+    {id:"d6t2",text:"In Google Admin: explore Security → Overview dashboard and Alert Center",cat:"lab",steps:[
+      "Go to admin.google.com → Security → Overview",
+      "This dashboard shows: 2-Step Verification enrollment status, file sharing exposure, email authentication (SPF/DKIM/DMARC), and device security",
+      "Click into each card to see the details — note what's green vs what has warnings",
+      "Now go to Security → Alert Center — this is Google's centralized alert hub (similar to Microsoft Defender alerts)",
+      "You may not have alerts yet since the tenant is new, but understand what types of alerts show up here: phishing spikes, suspicious logins, DLP violations, compromised accounts",
+      "Go to Reporting → Audit and investigation — this is the Security Investigation Tool. Click 'Reporting source' dropdown to see all the log types available: Admin events, Gmail logs, Drive logs, Login events",
+      "Try running a query: set Source to 'Admin log events' and click Search — you'll see your own admin actions from setting up the tenant"
+    ]},
+  ]},
+  {day:7,label:"First Credential",tasks:[
+    {id:"d7t1",text:"Take Applied Skills assessment: 'Get started with identities & access using Microsoft Entra'",cat:"cert",steps:[
+      "Go to learn.microsoft.com/en-us/credentials/applied-skills/get-started-with-identities-and-access-using-microsoft-entra/",
+      "Click 'Start' on the assessment — it will spin up a lab environment (takes 2-5 minutes)",
+      "You'll get a scenario and 12-16 tasks to complete in a LIVE Azure/Entra environment — things like: create users, configure groups, set up SSPR, assign roles, configure authentication methods",
+      "There are NO multiple choice questions — you actually DO the work in the portal",
+      "You have about 1-2 hours. Take your time and read each task carefully",
+      "If you get stuck on a task, skip it and come back — you don't need 100% to pass",
+      "When done, click 'Submit' — you get pass/fail within 60 seconds",
+      "If you PASS: immediately go to your Microsoft Learn profile → Credentials → click 'Share' → add it to LinkedIn",
+      "If you FAIL: note which tasks tripped you up, study those areas, and retry after 72 hours (there's a cooldown)"
+    ]},
+    {id:"d7t2",text:"If passed → add credential to LinkedIn immediately. If failed → note gaps and retry Day 10",cat:"career",steps:[
+      "If passed: Go to learn.microsoft.com → your profile → Credentials tab → find the Applied Skills credential → click 'Share'",
+      "Copy the credential URL",
+      "On LinkedIn: go to your profile → 'Add profile section' → 'Licenses & certifications'",
+      "Title: 'Applied Skills: Get Started with Identities and Access Using Microsoft Entra'",
+      "Issuing organization: Microsoft",
+      "Paste the credential URL in the 'Credential URL' field",
+      "This shows up as a verified credential on your profile — recruiters can click and verify it's real",
+      "If failed: Write down the task numbers/topics you struggled with. Spend Day 8-9 reviewing those specific areas before retrying on Day 10"
+    ]},
+  ]},
+  {day:8,label:"Conditional Access — Foundations",tasks:[
+    {id:"d8t1",text:"Study: What are Named Locations, sign-in risk vs user risk, and grant controls?",cat:"study",steps:[
+      "Go to learn.microsoft.com and search for 'Conditional Access overview' — read the full article",
+      "KEY CONCEPTS to understand:",
+      "• Named Locations: IP ranges or countries you define as 'trusted' or 'blocked'. Example: your office IP is trusted, so users there skip MFA. A country you have no employees in is blocked entirely",
+      "• Sign-in risk: how suspicious is THIS SPECIFIC sign-in attempt? (unfamiliar location, anonymous IP, impossible travel = high risk)",
+      "• User risk: how likely is it that THIS USER'S ACCOUNT is compromised? (leaked credentials detected, unusual activity pattern = high risk)",
+      "• Grant controls: what happens when a CA policy matches? Options: Block access, Require MFA, Require compliant device, Require approved client app, Require password change",
+      "• Session controls: don't block entirely but LIMIT what users can do: no file downloads, sign-in frequency (re-auth every X hours), persistent browser session",
+      "Draw this on paper: IF [user/group] accessing [app] FROM [location/device] WITH [risk level] THEN [grant/block control]. This is the CA policy formula"
+    ]},
+    {id:"d8t2",text:"Create Named Locations: your home IP as 'trusted,' block a test country",cat:"lab",steps:[
+      "Go to entra.microsoft.com → Protection → Conditional Access → Named locations",
+      "Click '+ IP ranges location' → Name: 'Home Office' → toggle 'Mark as trusted location' ON",
+      "Find your public IP: go to whatismyip.com → copy your IPv4 address",
+      "Add it in CIDR format: your.ip.address/32 (the /32 means exactly this one IP) → click 'Create'",
+      "Now click '+ Countries location' → Name: 'Blocked Countries' → select a country you'd never expect legitimate sign-ins from (e.g., pick any country for testing purposes) → click 'Create'",
+      "You now have two Named Locations you can reference in Conditional Access policies. The 'trusted' flag means policies can say 'skip MFA if signing in from a trusted location'"
+    ]},
+    {id:"d8t3",text:"Build CA Policy #1: Require MFA for all users accessing Exchange Online",cat:"lab",steps:[
+      "Go to entra.microsoft.com → Protection → Conditional Access → Policies → '+ New policy'",
+      "Name: 'CA001 - Require MFA for Exchange Online'",
+      "ASSIGNMENTS section:",
+      "• Users: 'All users' (in production you'd exclude break-glass accounts — for lab this is fine)",
+      "• Target resources → Cloud apps → 'Select apps' → search for 'Office 365 Exchange Online' → select it",
+      "• Conditions: leave all at 'Not configured' for this first policy",
+      "ACCESS CONTROLS section:",
+      "• Grant: select 'Grant access' → check 'Require multifactor authentication' → click 'Select'",
+      "SESSION: leave defaults",
+      "Enable policy: set to 'Report-only' first (not 'On') — this lets you see what WOULD happen without actually enforcing. Check the sign-in logs after a day to see the impact",
+      "Click 'Create'",
+      "WHY REPORT-ONLY FIRST: In production, turning a CA policy to 'On' without testing can lock people out. Always start in Report-only, check the logs, then switch to On. This is a best practice interviewers love to hear"
+    ]},
+  ]},
+  {day:9,label:"Conditional Access — Intermediate",tasks:[
+    {id:"d9t1",text:"Build CA Policy #2: Block sign-ins from outside the US unless MFA, auto-block high-risk",cat:"lab",steps:[
+      "Go to Conditional Access → Policies → '+ New policy'",
+      "Name: 'CA002 - Location-Based Access + Risk Block'",
+      "Users: All users",
+      "Target resources: All cloud apps",
+      "CONDITIONS — this is where it gets interesting:",
+      "• Locations → Configure: Yes → Include: 'Any location' → Exclude: select your 'Home Office' trusted location AND add 'United States' under countries",
+      "This means the policy triggers for sign-ins from OUTSIDE the US and not from your home IP",
+      "Grant: 'Grant access' → check 'Require multifactor authentication'",
+      "Now create a SECOND policy for high-risk blocking:",
+      "Name: 'CA003 - Block High Risk Sign-ins'",
+      "Users: All users | Target resources: All cloud apps",
+      "Conditions → Sign-in risk: set to 'High'",
+      "Grant: 'Block access'",
+      "Set both to Report-only first, then review logs before enabling",
+      "These two policies together mean: outside the US = MFA required, high risk = blocked entirely. This is a real-world pattern"
+    ]},
+    {id:"d9t2",text:"Build CA Policy #3: Require compliant Intune device for desktop, allow MAM for mobile BYOD",cat:"lab",steps:[
+      "This is a SPLIT policy — two policies working together. This pattern is extremely common and comes up in interviews constantly",
+      "POLICY A — Desktop/Laptop access:",
+      "Name: 'CA004 - Require Compliant Device (Desktop)'",
+      "Users: All users | Target resources: All cloud apps",
+      "Conditions → Device platforms → Include: Windows, macOS",
+      "Grant: 'Grant access' → check 'Require device to be marked as compliant'",
+      "POLICY B — Mobile BYOD access:",
+      "Name: 'CA005 - Require App Protection (Mobile)'",
+      "Users: All users | Target resources: All cloud apps",
+      "Conditions → Device platforms → Include: iOS, Android",
+      "Grant: 'Grant access' → check 'Require app protection policy'",
+      "THE LOGIC: Corporate laptops must be Intune-enrolled and compliant. Personal phones just need app protection (MAM) — no full enrollment needed. Users keep their personal phone private while corporate data stays protected inside managed apps",
+      "Set both to Report-only first"
+    ]},
+  ]},
+  {day:10,label:"Conditional Access — Advanced",tasks:[
+    {id:"d10t1",text:"Build CA Policy #4: Browser-only SharePoint from unmanaged devices, no downloads",cat:"lab",steps:[
+      "Name: 'CA006 - Restrict Unmanaged Device SharePoint Access'",
+      "Users: All users | Target resources → Select apps → 'SharePoint Online'",
+      "Conditions → Filter for devices → use the filter: device.isCompliant -ne True (this targets non-compliant/unmanaged devices)",
+      "Grant: 'Grant access' (we're not blocking — we're restricting)",
+      "Session controls → THIS IS THE KEY PART: select 'Use app enforced restrictions'",
+      "For this to work, you also need to configure SharePoint admin settings:",
+      "Go to admin.microsoft.com → Admin centers → SharePoint → Policies → Access control",
+      "Under 'Unmanaged devices' select: 'Allow limited, web-only access' — this blocks downloads, print, and sync from unmanaged devices",
+      "THE RESULT: An employee on their personal laptop can VIEW SharePoint files in the browser but CANNOT download, sync, or print them. On their managed corporate device, full access. This is a classic interview scenario"
+    ]},
+    {id:"d10t2",text:"Build CA Policy #5: Require phishing-resistant MFA for admin roles",cat:"lab",steps:[
+      "Name: 'CA007 - Phishing-Resistant MFA for Admins'",
+      "Users → Include: 'Directory roles' → select: Global Administrator, User Administrator, Exchange Administrator, Security Administrator, Intune Administrator",
+      "Target resources: All cloud apps",
+      "Grant: 'Grant access' → check 'Require authentication strength' → select 'Phishing-resistant MFA'",
+      "This means admins can ONLY use FIDO2 keys, Windows Hello for Business, or certificate-based auth — NOT SMS or Authenticator push (which are phishable)",
+      "NOTE: In your lab you may not have FIDO2 keys. Set this to Report-only so it doesn't lock you out. The point is understanding HOW to build it",
+      "WHY THIS MATTERS: Microsoft now strongly recommends phishing-resistant MFA for all admin roles. If an interviewer asks about 'authentication strength' and you can explain this policy, you'll stand out"
+    ]},
+    {id:"d10t3",text:"Review all 5+ policies — practice explaining each one's business purpose out loud",cat:"interview",steps:[
+      "Go to Conditional Access → Policies — you should have 5-7 policies now",
+      "For EACH policy, practice saying out loud: 'This policy does X because the business needs Y'",
+      "Example: 'CA006 restricts SharePoint access from unmanaged devices to browser-only with no downloads. The business need is preventing sensitive legal documents from being saved to personal devices that we don't control. It balances security with usability because attorneys can still view documents remotely.'",
+      "Time yourself — each explanation should be 30-60 seconds, not a 5-minute monologue",
+      "Practice until it sounds natural, not rehearsed. Interviewers can tell the difference"
+    ]},
+  ]},
+  {day:11,label:"Privileged Identity Management",tasks:[
+    {id:"d11t1",text:"Enable PIM — make User Admin an 'eligible' role for a test user",cat:"lab",steps:[
+      "Go to entra.microsoft.com → Identity governance → Privileged Identity Management",
+      "If first time: you may see a setup wizard. Click through to enable PIM for your tenant",
+      "Click 'Microsoft Entra roles' → 'Roles' → find 'User Administrator' → click it",
+      "Click '+ Add assignments' → select one of your test users → Assignment type: 'Eligible' (NOT Active)",
+      "'Eligible' means the user DOESN'T have the role right now — they have to REQUEST it and activate it each time they need it. Active means it's always on",
+      "Set eligibility duration: 1 year → click 'Assign'",
+      "This is 'just-in-time access' — the user only has admin rights when they actively need them, reducing the attack surface"
+    ]},
+    {id:"d11t2",text:"Configure approval workflow: require a second admin to approve activation",cat:"lab",steps:[
+      "In PIM → Microsoft Entra roles → 'Settings' → find 'User Administrator' → click it → 'Edit'",
+      "Under 'Activation' tab:",
+      "• Maximum activation duration: set to 4 hours (they lose the role after 4 hours automatically)",
+      "• Require justification on activation: ON (user must type why they need the role)",
+      "• Require approval to activate: ON → select YOUR admin account as the approver",
+      "• Require MFA on activation: ON",
+      "Click 'Update'",
+      "Now when the test user tries to activate User Administrator, they must: provide MFA, type a justification, and wait for YOUR approval"
+    ]},
+    {id:"d11t3",text:"Test the flow: activate role → approve → verify access → deactivate",cat:"lab",steps:[
+      "Open a NEW Incognito window → sign in as your TEST USER (not your admin) at entra.microsoft.com",
+      "Go to Privileged Identity Management → 'My roles' → find 'User Administrator' → click 'Activate'",
+      "Enter a justification: 'Need to update user properties for onboarding' → Submit",
+      "Switch back to YOUR admin browser → PIM → 'Approve requests' → you should see the pending request → Review it → Approve",
+      "Back in the test user's browser → they should now have User Administrator. Verify: go to Users → try editing a user → it should work now",
+      "After testing, go back to PIM → 'My roles' → 'Deactivate' the role",
+      "WHY THIS MATTERS: PIM is a key component of zero-trust and least-privilege. Being able to demo and explain this flow in an interview puts you ahead of most candidates"
+    ]},
+  ]},
+  {day:12,label:"Authentication Deep-Dive",tasks:[
+    {id:"d12t1",text:"Study: FIDO2 keys, Windows Hello for Business, certificate-based auth, Temporary Access Pass",cat:"study",steps:[
+      "Read: learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-methods",
+      "KEY CONCEPTS — understand the spectrum from weakest to strongest:",
+      "• SMS/Phone call: weakest — vulnerable to SIM swapping and interception. Microsoft is pushing away from this",
+      "• Authenticator app push: better — but vulnerable to 'MFA fatigue' attacks (bombarding user with prompts until they accidentally approve)",
+      "• Authenticator app + number matching: much better — user must type a number shown on screen, stops fatigue attacks",
+      "• FIDO2 security key: phishing-resistant — physical hardware key (like YubiKey). Can't be phished because it's bound to the website domain",
+      "• Windows Hello for Business: phishing-resistant — biometric (face/fingerprint) or PIN bound to the specific device. Credential never leaves the device",
+      "• Certificate-based auth: phishing-resistant — X.509 certificate on device or smart card",
+      "• Temporary Access Pass (TAP): time-limited passcode admins generate to let users set up passwordless auth on first login. Replaces the old 'here's your temporary password' approach",
+      "In interviews, being able to rank these by strength and explain WHY each is stronger is a differentiator"
+    ]},
+    {id:"d12t2",text:"Configure Authentication Methods policy — enable FIDO2 and TAP for a test group",cat:"lab",steps:[
+      "Go to entra.microsoft.com → Protection → Authentication methods → Policies",
+      "Find 'FIDO2 security key' → click it → Enable: Yes → Target: select your SG-IT group (or All users for lab)",
+      "Find 'Temporary Access Pass' → click it → Enable: Yes → Target: All users",
+      "Configure TAP settings: One-time use: Yes, Minimum lifetime: 1 hour, Maximum lifetime: 24 hours",
+      "Now TEST IT: go to Users → select a test user → 'Authentication methods' → '+ Add authentication method' → 'Temporary Access Pass'",
+      "A TAP code is generated — in production you'd give this to the new hire on their first day so they can set up Windows Hello or a FIDO2 key without needing a password",
+      "Click 'Save' on the Authentication methods policies page"
+    ]},
+    {id:"d12t3",text:"Continue SC-300 MS Learn — Modules 3–4",cat:"study",steps:[
+      "Continue the SC-300 learning path at learn.microsoft.com",
+      "Module 3 covers: Conditional Access deep-dive (you've been doing this hands-on — the theory will click now)",
+      "Module 4 covers: Identity protection and governance (risk policies, access reviews, entitlement management)",
+      "Since you've already BUILT CA policies in your lab, this reading should feel like confirmation of what you already know rather than learning from scratch",
+      "Target time: 90-120 minutes across both modules"
+    ]},
+  ]},
+  {day:13,label:"Graph API + PowerShell Day",tasks:[
+    {id:"d13t1",text:"Open Graph Explorer — run GET /users, GET /groups, GET /conditionalAccess/policies",cat:"lab",steps:[
+      "Go to developer.microsoft.com/en-us/graph/graph-explorer",
+      "Sign in with your DEV TENANT admin account (not your personal account)",
+      "In the query bar, type: GET https://graph.microsoft.com/v1.0/users → click 'Run query'",
+      "You'll see a JSON response with all your users — their IDs, display names, UPNs, departments",
+      "Now try: GET https://graph.microsoft.com/v1.0/groups → see all your security groups",
+      "Now try: GET https://graph.microsoft.com/v1.0/identity/conditionalAccess/policies → see all your CA policies as JSON",
+      "Try a filter: GET https://graph.microsoft.com/v1.0/users?$filter=department eq 'Sales' → only Sales users returned",
+      "THIS IS THE API that PowerShell, automation tools, and SaaS integrations use to interact with Entra. Understanding Graph is what makes you a senior admin"
+    ]},
+    {id:"d13t2",text:"Write PowerShell script: bulk-create 5 users using Microsoft.Graph module",cat:"lab",steps:[
+      "Open PowerShell (or Terminal) on your machine",
+      "Install the Graph module: Install-Module Microsoft.Graph -Scope CurrentUser",
+      "Connect: Connect-MgGraph -Scopes 'User.ReadWrite.All' -TenantId 'YOUR-TENANT-ID'",
+      "Sign in with your dev tenant admin when the browser pops up",
+      "Create a script file called New-BulkUsers.ps1 with this logic:",
+      "$users = @(",
+      "  @{DisplayName='Test User 1'; UPN='test1@yourdomain.onmicrosoft.com'; Dept='Marketing'; Password='TempP@ss123!'},",
+      "  @{DisplayName='Test User 2'; UPN='test2@yourdomain.onmicrosoft.com'; Dept='Marketing'; Password='TempP@ss123!'},",
+      "  # ... add more",
+      ")",
+      "foreach ($u in $users) {",
+      "  New-MgUser -DisplayName $u.DisplayName -UserPrincipalName $u.UPN -Department $u.Dept -MailNickname ($u.UPN.Split('@')[0]) -AccountEnabled -PasswordProfile @{Password=$u.Password; ForceChangePasswordNextSignIn=$true} -UsageLocation 'US'",
+      "}",
+      "Run it and verify the users appear in entra.microsoft.com → Users"
+    ]},
+    {id:"d13t3",text:"Write PowerShell script: export all Conditional Access policies to JSON",cat:"lab",steps:[
+      "This script is GOLD for interviews — it shows you can back up and document CA policies programmatically",
+      "Create Export-CAPolicies.ps1:",
+      "Connect-MgGraph -Scopes 'Policy.Read.All'",
+      "$policies = Get-MgIdentityConditionalAccessPolicy",
+      "$policies | ConvertTo-Json -Depth 10 | Out-File './CA-Policies-Backup.json'",
+      "Write-Host \"Exported $($policies.Count) policies to CA-Policies-Backup.json\"",
+      "Run it — open the JSON file and review your policies in their raw format",
+      "In an interview, you can say: 'I scripted CA policy exports to JSON for documentation and change tracking — we reviewed the JSON diffs before making policy changes in production.' That's a senior-level practice"
+    ]},
+  ]},
+  {day:14,label:"Automation + Review",tasks:[
+    {id:"d14t1",text:"Write PowerShell script: pull Intune device compliance report",cat:"lab",steps:[
+      "Create Get-ComplianceReport.ps1:",
+      "Connect-MgGraph -Scopes 'DeviceManagementManagedDevices.Read.All'",
+      "$devices = Get-MgDeviceManagementManagedDevice",
+      "$devices | Select-Object DeviceName, ComplianceState, OperatingSystem, LastSyncDateTime, UserPrincipalName | Format-Table -AutoSize",
+      "$devices | Export-Csv './Intune-Compliance-Report.csv' -NoTypeInformation",
+      "If you don't have devices enrolled yet, the report will be empty — that's OK. The point is knowing HOW to pull the data",
+      "In production, you'd schedule this as a weekly report and flag non-compliant devices for follow-up"
+    ]},
+    {id:"d14t2",text:"Review all Week 2 work — can you explain PIM, CA, and Graph API fluently?",cat:"review",steps:[
+      "Quiz yourself on these questions — answer OUT LOUD:",
+      "1. What is Conditional Access and how does it work? (IF/THEN logic — assignments + conditions + controls)",
+      "2. What's the difference between sign-in risk and user risk? (sign-in = this attempt suspicious, user = account may be compromised)",
+      "3. What is PIM and why does it matter? (just-in-time admin access, least privilege, audit trail)",
+      "4. What's the difference between 'Eligible' and 'Active' role assignments in PIM? (eligible = must request, active = always on)",
+      "5. What is Microsoft Graph? (REST API for all M365 services — users, groups, devices, policies, mail, etc.)",
+      "6. Why start CA policies in Report-only mode? (test impact before enforcing, prevent lockouts)",
+      "If you stumbled on any of these, go back and review that specific topic"
+    ]},
+    {id:"d14t3",text:"Practice interview Q1 (SSO + SCIM integration walkthrough) out loud, timed",cat:"interview",steps:[
+      "Set a 3-minute timer on your phone",
+      "Answer this question out loud as if an interviewer asked it:",
+      "'Walk me through how you'd integrate a new SaaS application with your identity provider for SSO and automated provisioning.'",
+      "Hit these points: check if app supports SAML/OIDC for SSO and SCIM for provisioning → add via Enterprise Applications → configure entity ID and reply URL → map attributes (UPN, email, display name) → enable SCIM provisioning with tenant URL and bearer token → scope to a pilot group → test with one user → check provisioning logs → roll out → add CA policy for the app",
+      "If you finished in under 2 minutes, add more detail. If over 4 minutes, tighten it up. 2-3 minutes is the sweet spot"
+    ]},
+  ]},
+  // ──── WEEKS 3-4: Abbreviated steps (still actionable but more concise since patterns are established) ────
+  {day:15,label:"Intune — Autopilot & Enrollment",tasks:[
+    {id:"d15t1",text:"Create Windows Autopilot deployment profile (User-Driven mode)",cat:"lab",steps:["Go to intune.microsoft.com → Devices → Enrollment → Windows → Deployment profiles → '+ Create profile' → 'Windows PC'","Name: 'Standard User-Driven Deployment'","Out-of-box experience (OOBE): Hide privacy settings, Hide EULA, Hide change account options, User account type: Standard (not admin)","Join to: Microsoft Entra joined","Click 'Create' — this profile auto-applies to any device registered with Autopilot","WHY THIS MATTERS: Autopilot lets a new hire unbox a laptop, connect to WiFi, sign in, and their entire corporate config deploys automatically — no IT imaging needed"]},
+    {id:"d15t2",text:"Configure Enrollment Status Page (ESP)",cat:"lab",steps:["Go to intune.microsoft.com → Devices → Enrollment → Windows → Enrollment Status Page","Click the default profile → Edit","'Show app and profile configuration progress': Yes","'Block device use until all apps and profiles are installed': Yes (for required apps)","'Allow users to reset device if installation error occurs': Yes","'Show error when installation exceeds X minutes': set to 60 minutes","WHY ESP MATTERS: Without ESP, users can start using the device before Intune finishes configuring it — potentially accessing resources without compliance policies applied. ESP prevents this gap"]},
+    {id:"d15t3",text:"Study: Self-Deploying vs User-Driven vs Pre-Provisioned",cat:"study",steps:["Self-Deploying: no user signs in during setup. Device auto-enrolls based on hardware hash. Used for kiosks, shared devices, digital signage","User-Driven: most common. User signs in during OOBE, device enrolls under their identity. Used for standard employee laptops","Pre-Provisioned (White Glove): IT or vendor does first phase in a warehouse/staging area (apps install, policies apply), then ships to user who just signs in. Fastest user experience, more IT effort upfront","Know when to recommend each — interviewers ask 'what Autopilot mode would you use for X scenario?'"]},
+  ]},
+  {day:16,label:"Intune — Compliance & Configuration",tasks:[
+    {id:"d16t1",text:"Build compliance policy: require BitLocker, min OS, password complexity",cat:"lab",steps:["Go to intune.microsoft.com → Devices → Compliance → '+ Create policy' → Platform: Windows 10 and later","Name: 'Win-Compliance-Standard'","Device Health: Require BitLocker: Yes","Device Properties: Minimum OS version: 10.0.19045 (Win 10 22H2) or whatever your test VM runs","System Security: Require a password: Yes, Minimum password length: 8, Password type: Alphanumeric","Actions for noncompliance: Mark device noncompliant → 0 days (immediately), Send email to user → 1 day","Assign to: All devices (or a test group)","This compliance policy is what CA policies reference when they say 'require compliant device'. A device that fails ANY of these checks = noncompliant = blocked by CA"]},
+    {id:"d16t2",text:"Build configuration profile via Settings Catalog",cat:"lab",steps:["Go to intune.microsoft.com → Devices → Configuration → '+ Create' → 'New Policy' → Platform: Windows 10 and later → Profile type: Settings catalog","Name: 'Win-Config-Security-Baseline'","Click '+ Add settings' → search for and add:","• 'Block USB' → under System: Removable Storage Access → set Removable Disk Deny Write Access: Enabled","• 'Prevent camera' → if you want to test: search Camera → Allow Camera: Block","• 'Wallpaper' → search Desktop Wallpaper → you can push a corporate wallpaper URL","Each setting you add is granular and searchable. This is the MODERN way to configure devices (vs Templates which are pre-bundled groups of settings)","Settings Catalog is replacing Templates as Microsoft's recommended approach. Know this for interviews"]},
+    {id:"d16t3",text:"Study: Settings Catalog vs Templates vs ADMX Import",cat:"study",steps:["Settings Catalog: modern, granular, searchable. Pick individual settings. Microsoft's recommended approach going forward","Templates: legacy Intune method. Pre-grouped profiles (Device Restrictions, Wi-Fi, VPN, etc.). Less granular but faster for common scenarios","ADMX Import: for migrating Group Policy settings. Upload ADMX/ADML files from on-prem GPO, then apply through Intune. Bridge for orgs moving from GPO to Intune","Migration path that interviewers ask about: GPO → Group Policy Analytics (in Intune, shows which GPOs can migrate) → ADMX import or Settings Catalog equivalent → retire GPO"]},
+  ]},
+  {day:17,label:"Intune — MAM / BYOD",tasks:[
+    {id:"d17t1",text:"Create App Protection Policy for iOS/Android",cat:"lab",steps:["Go to intune.microsoft.com → Apps → App protection policies → '+ Create policy' → iOS/iPadOS (or Android)","Name: 'BYOD-App-Protection'","Apps: Target to 'All Microsoft Apps' (includes Outlook, Teams, OneDrive, etc.)","Data protection settings:","• Send org data to other apps: 'Policy managed apps' (blocks copy/paste to personal apps)","• Receive data from other apps: 'All apps' (they can paste INTO corporate apps)","• Save copies of org data: 'Block' (can't save corporate files to personal storage)","• Restrict cut, copy, paste between other apps: 'Policy managed apps with paste in'","Access requirements: Require PIN for access: Yes, PIN type: Numeric, Min PIN length: 6","Conditional launch: Jailbroken/rooted devices: Block access, Min OS version: set to a recent version","Assign to: All users","THIS IS MAM WITHOUT ENROLLMENT — the user's personal device is untouched but corporate data inside managed apps is encrypted and controlled"]},
+    {id:"d17t2",text:"Configure: block cut/copy to personal apps, require PIN, encrypt, block jailbroken",cat:"lab",steps:["If you created the policy above, these settings are already configured","Test the experience: sign into Outlook on a personal phone (or use an emulator) with one of your test users","You should be prompted to: install Company Portal or Authenticator (for policy delivery), set a PIN for managed apps, and accept the policy","Try copying text from Outlook and pasting into a personal Notes app — it should be blocked","Try forwarding an email to a personal Gmail — it should be blocked or the attachment stripped","This is the USER EXPERIENCE of MAM. Understanding how it FEELS to the end user is important for interview answers about BYOD"]},
+    {id:"d17t3",text:"Practice interview Q2 out loud",cat:"interview",steps:["Set a timer. Answer out loud:","'We have users who work from personal devices. How do you balance security with user experience?'","Key points to hit: MAM without enrollment (not full MDM for BYOD), App Protection Policies protect corporate data inside managed apps, cut/copy/paste restrictions, PIN requirement, encryption at rest, CA policy requires approved apps with protection policies, users still own their device, corporate wipe only removes managed app data — not personal photos/messages","Keep it 2-3 minutes"]},
+  ]},
+  {day:18,label:"Intune — Apps & Updates",tasks:[
+    {id:"d18t1",text:"Deploy an app suite through Intune",cat:"lab",steps:["Go to intune.microsoft.com → Apps → All apps → '+ Add'","App type: 'Microsoft 365 Apps' → Select","App suite configuration: choose the apps (Word, Excel, PowerPoint, Outlook, Teams)","Update channel: 'Monthly Enterprise Channel' (most common in production)","Assignments: Required → add 'All devices' or a test group","This pushes Office to all enrolled devices automatically — no user action needed","Also try: Apps → '+ Add' → 'Windows app (Win32)' to understand the .intunewin packaging process (requires the Content Prep Tool from Microsoft)"]},
+    {id:"d18t2",text:"Configure Windows Update Ring",cat:"lab",steps:["Go to intune.microsoft.com → Devices → Windows → Update rings → '+ Create'","Name: 'Standard-Update-Ring'","Quality update deferral: 7 days (lets early adopters find bugs before your users get the update)","Feature update deferral: 30 days","Delivery optimization: HTTP blended with peering (reduces bandwidth by sharing updates between nearby devices)","Auto restart: Smart — device restarts during non-active hours","Assign to: All devices","Update rings let you control WHEN updates install and auto-restart, preventing mid-workday forced reboots"]},
+    {id:"d18t3",text:"Continue MD-102 MS Learn — Modules 3–4",cat:"study",steps:["Continue the MD-102 learning path at learn.microsoft.com","Module 3: App management — deploying apps, Win32 app packaging, Microsoft Store integration","Module 4: Device compliance and configuration profiles — you've already done this hands-on, so the reading will reinforce","Target time: 60-90 minutes"]},
+  ]},
+  {day:19,label:"Google Sprint — Policies & Security",tasks:[
+    {id:"d19t1",text:"Configure an OU-scoped Chrome policy",cat:"lab",steps:["Go to admin.google.com → Devices → Chrome → Settings → Users & browsers","Select the OU you want to target (e.g., 'Legal') in the left panel","Scroll through the settings — there are HUNDREDS. Configure a few:","• Homepage: set a custom homepage URL","• Extension install sources: set an allow list of approved extensions","• Incognito mode: 'Disallow incognito mode'","• Safe Browsing: 'Always enable Safe Browsing'","Click 'Save'","IMPORTANT: Because you selected the 'Legal' OU, these settings only apply to users in that OU. Users in Sales or IT won't be affected. This is how Google scopes policies — OUs, not groups (unlike Microsoft which uses groups for most policy targeting)"]},
+    {id:"d19t2",text:"Enforce 2-Step Verification for one test OU",cat:"lab",steps:["Go to admin.google.com → Security → Authentication → 2-step verification","Select an OU in the left panel (e.g., 'IT')","Set: Allow users to turn on 2-Step Verification → ON","Enforcement: ON — 'Turn on enforcement from [today's date]'","New user enrollment period: 1 day (in production you'd give a week)","Methods: Allow any — or restrict to security keys only for higher security","Click 'Save'","Users in that OU will be forced to set up 2SV on their next login. This is the Google equivalent of MFA enforcement in Entra CA policies"]},
+    {id:"d19t3",text:"Create a Gmail DLP rule: block outbound emails containing SSN patterns",cat:"lab",steps:["Go to admin.google.com → Security → Access and data control → Data protection → Manage Rules","Click '+ Add rule'","Name: 'Block SSN in Outbound Email'","Scope: select an OU or your entire org","Conditions: Add condition → Content matches → select 'USA - Social Security Number'","Action: Block message, with a custom notification to the user: 'This email was blocked because it contains what appears to be a Social Security Number'","Click 'Create'","This is Google's equivalent of Microsoft DLP. In interviews, being able to say 'I've configured DLP rules in BOTH Microsoft and Google environments' is powerful because most candidates only know one"]},
+  ]},
+  {day:20,label:"Google Sprint — Apps & Endpoint",tasks:[
+    {id:"d20t1",text:"Add a SAML app integration from Google Admin Console",cat:"lab",steps:["Go to admin.google.com → Apps → Web and mobile apps → 'Add App' → 'Search for apps'","Search for a common SaaS app (Slack, Zoom, Asana, etc.) — Google has pre-built SAML connectors for hundreds of apps","Select one → click 'Download IDP metadata' or note the SSO URL, Entity ID, and Certificate","Follow the setup wizard — it maps Google user attributes to the app's expected attributes","Assign the app to an OU or group","This is the Google equivalent of adding an Enterprise Application in Entra. Same concept (SAML federation), different portal"]},
+    {id:"d20t2",text:"Explore Google Endpoint Management",cat:"lab",steps:["Go to admin.google.com → Devices → Mobile & endpoints → Settings → Universal","Enable: Mobile Management → Advanced (this gives you full MDM capabilities, not just basic)","Configure: Password requirements, Screen lock, Encryption required, Camera allowed","Go to 'Approve devices' to see enrolled devices","On a test phone: install Google Device Policy app and sign in with a test user to enroll","Google Endpoint Management is simpler than Intune but covers the basics. Being able to compare them in an interview shows breadth"]},
+    {id:"d20t3",text:"Explore the Security Investigation Tool",cat:"lab",steps:["Go to admin.google.com → Security → Investigation tool (or Reporting → Audit and investigation)","Set Data source: 'Admin log events' → click Search","You'll see all admin actions taken in the console — user creation, policy changes, group modifications","Try: Data source: 'Login audit log' → search for a specific user → see their login history, IP addresses, devices","Try: Data source: 'Drive log events' → see file sharing, downloads, external access","This is Google's equivalent of the Entra sign-in logs and audit logs. Practice searching and filtering — you'll be asked about 'how do you investigate a suspicious login?' in interviews"]},
+  ]},
+  {day:21,label:"Credentials Push",tasks:[
+    {id:"d21t1",text:"Take Applied Skills: 'Configure secure access by using Microsoft Entra'",cat:"cert",steps:["Go to learn.microsoft.com/en-us/credentials/applied-skills/configure-secure-access-by-using-microsoft-entra/","This assessment focuses on Conditional Access policies, MFA configuration, and identity protection","You've been building CA policies all week — you're well-prepared","Click Start → complete the lab tasks → submit. Same format as the first assessment: live lab, 12-16 tasks, pass/fail in 60 seconds","If you pass, add to LinkedIn immediately"]},
+    {id:"d21t2",text:"Take Applied Skills: 'Deploy and manage devices with Microsoft Intune'",cat:"cert",steps:["Go to learn.microsoft.com/en-us/credentials/applied-skills/deploy-and-manage-devices-by-using-microsoft-intune/","This covers: device enrollment, compliance policies, configuration profiles, app deployment","You've done all of this in your lab this week","Note: you can take both assessments on the same day. Each takes about 1-2 hours including lab spin-up time","After passing, add both to LinkedIn"]},
+    {id:"d21t3",text:"Identify your 3 weakest areas for targeted study",cat:"review",steps:["Look back at the last 2 weeks. Which tasks did you struggle with or skip?","Common weak spots: Graph API PowerShell scripting, Google Admin CLI (GAM), SCIM provisioning details, Autopilot hardware hash registration, PIM configuration","Write down your top 3 gaps on paper","Schedule time in the next 2 weeks to specifically address these gaps — use MS Learn modules, YouTube (John Savill's channel), and hands-on lab time"]},
+  ]},
+  // ──── WEEKS 4-8: More concise steps since user has the pattern down ────
+  {day:22,label:"Interview Prep — Identity Lifecycle",tasks:[
+    {id:"d22t1",text:"Practice interview Q3: identity lifecycle for 500+ employee org",cat:"interview",steps:["Answer out loud (2-3 min): cover onboarding (Lifecycle Workflows, dynamic groups, license auto-assignment, TAP for first login), role changes (Access Packages in Entitlement Management, manager-driven requests), offboarding (Lifecycle Workflow triggered by employeeLeaveDateTime, session revocation via CAE, disable account, convert mailbox to shared)"]},
+    {id:"d22t2",text:"Study: Entra Lifecycle Workflows and Entitlement Management",cat:"study",steps:["Read: learn.microsoft.com — search 'Lifecycle Workflows' and 'Entitlement Management'","Lifecycle Workflows: automated tasks triggered by employeeHireDate or employeeLeaveDateTime attributes. Tasks: generate TAP, add to groups, send email, remove from groups, disable account","Entitlement Management: Access Packages bundle apps+groups+sites together. Users or managers request packages through My Access portal with approval workflows"]},
+  ]},
+  {day:23,label:"Interview Prep — Hybrid Identity",tasks:[
+    {id:"d23t1",text:"Practice interview Q4: Google + Microsoft hybrid scenario",cat:"interview",steps:["Answer out loud: which directory is the source of truth? If AD on-prem: GCDS syncs to Google, Azure AD Connect syncs to Entra. If Google: federate Google as SAML IdP for Entra. Cover: cross-platform CA policy alignment, unified MFA enforcement, single source for user lifecycle events"]},
+    {id:"d23t2",text:"Study: GCDS architecture and federation between Google and Microsoft",cat:"study",steps:["Read: support.google.com/a/answer/106368 — GCDS overview","GCDS (Google Cloud Directory Sync) syncs users, groups, and OUs from AD/LDAP to Google Cloud Identity. It's one-way: AD → Google. Changes in Google don't sync back","For federation: Google can be an IdP (identity provider) serving SAML assertions to Microsoft as an SP (service provider), or vice versa. The IdP is where users actually authenticate"]},
+  ]},
+  {day:24,label:"Interview Prep — Automation Story",tasks:[
+    {id:"d24t1",text:"Practice interview Q5: craft YOUR automation success story",cat:"interview",steps:["Framework: Situation → Manual Pain → Automation Solution → Measurable Result","Use REAL examples from Quarles & Brady. Even simple ones work: 'Onboarding required 14 manual steps. I wrote a PowerShell script that created the AD account, set group memberships, and emailed the hiring partner. Reduced 90 minutes to 12 minutes per user and eliminated permission errors we were getting when steps were missed.'","If you don't have a great example yet, build one this week from the scripts you wrote in Days 13-14 — that becomes your story"]},
+    {id:"d24t2",text:"Write a stale account cleanup script",cat:"lab",steps:["Create Find-StaleAccounts.ps1: connect to Graph → query users where lastSignInDateTime is older than 90 days → export to CSV → optionally disable accounts","Connect-MgGraph -Scopes 'AuditLog.Read.All,User.ReadWrite.All'","$threshold = (Get-Date).AddDays(-90)","Get-MgUser -All -Property DisplayName,UserPrincipalName,SignInActivity | Where-Object { $_.SignInActivity.LastSignInDateTime -lt $threshold }","This is a real-world admin task that every org needs. It's also a great interview answer when asked about 'hygiene' or 'identity governance' practices"]},
+  ]},
+  {day:25,label:"Google Advanced + GAM",tasks:[
+    {id:"d25t1",text:"Practice GAM: gam update ou, gam create group, gam print mobile",cat:"lab",steps:["Open terminal → run these commands against your Google Workspace tenant:","gam print users fields name,email,ou — list all users with OU paths","gam create group sales-team@yourdomain name 'Sales Team' — create a group","gam update group sales-team add member user1@yourdomain — add a member","gam print mobile — list all mobile devices (may be empty in lab)","gam update ou '/Sales' name 'Sales Department' — rename an OU","Practice until these feel natural — GAM is your power tool for Google admin"]},
+    {id:"d25t2",text:"Study: Google Workspace Migrate and Google Vault",cat:"study",steps:["Google Workspace Migrate: tool for migrating email, calendar, contacts from Exchange/M365 to Workspace. Know it exists and when to use it (migration projects)","Google Vault: retention, legal holds, search, and export for Gmail, Drive, and Chat. Used for eDiscovery and compliance","Know the comparison: Google Vault ≈ Microsoft Purview/Compliance Center. Both do retention policies, legal holds, and content search"]},
+  ]},
+  {day:26,label:"Resume & LinkedIn Day",tasks:[
+    {id:"d26t1",text:"Finalize your resume",cat:"career",steps:["Open the Samuel-Bennett-Resume-FINAL.docx from this conversation","Proof-read every bullet for accuracy — make sure you're comfortable defending every claim in an interview","Save as PDF for submitting online: File → Save As → PDF","Keep the .docx version for when you need to customize bullets for specific job postings"]},
+    {id:"d26t2",text:"Update LinkedIn headline and profile",cat:"career",steps:["Use the LinkedIn/Indeed optimization prompt from this conversation","Paste it into a new Claude chat (or the browser extension while on LinkedIn)","Apply the generated headline, About section, and Experience rewrites","Set 'Open to Work' → visible to recruiters only → add target titles: 'Identity and Access Administrator', 'SaaS Administrator', 'M365 Administrator', 'Endpoint Management Engineer'"]},
+    {id:"d26t3",text:"Add Applied Skills credentials to LinkedIn",cat:"career",steps:["Go to your Microsoft Learn profile → Credentials tab → for each Applied Skills credential → click Share → copy the URL","On LinkedIn → Add profile section → Licenses & certifications → add each one with Microsoft as issuer and the credential URL","These auto-verify — recruiters can click and confirm you actually earned them"]},
+  ]},
+  {day:27,label:"Community + Networking",tasks:[
+    {id:"d27t1",text:"Join sysadmin communities",cat:"career",steps:["reddit.com/r/Intune — subscribe, read recent posts to see what real admins struggle with","reddit.com/r/sysadmin — largest IT admin community","discord.gg/winadmins — WinAdmins Discord, very active and helpful","Introduce yourself in each — mention you're transitioning to identity/endpoint management roles"]},
+    {id:"d27t2",text:"Answer one question in a community",cat:"career",steps:["Find a question you can answer — even a basic one about Intune enrollment or CA policies","Write a helpful, detailed answer","Teaching others forces you to articulate concepts clearly — exactly the skill you need in interviews","Plus it builds your professional reputation in these communities"]},
+  ]},
+  {day:28,label:"Full Interview Simulation",tasks:[
+    {id:"d28t1",text:"Run all 5 interview questions back-to-back",cat:"interview",steps:["Set a 15-minute timer. Answer all 5 questions consecutively:","Q1: Walk through integrating a new SaaS app with SSO and SCIM provisioning","Q2: How do you balance BYOD security with user experience?","Q3: How would you handle identity lifecycle for 500+ employees?","Q4: You're a Google shop that also uses some Microsoft apps. How do you handle hybrid identity?","Q5: Tell me about a time you automated something that saved significant time","2-3 minutes each. Record yourself if possible — listen back and refine"]},
+    {id:"d28t2",text:"Record and review one answer",cat:"interview",steps:["Use your phone's voice recorder. Pick the answer you feel least confident about","Record it → listen back → note: filler words (um, uh), missing key points, areas where you sounded uncertain","Re-record until it sounds natural and confident. This is uncomfortable but incredibly effective"]},
+  ]},
+  {day:29,label:"Weak Spot Remediation",tasks:[
+    {id:"d29t1",text:"Revisit your 3 weakest areas from Day 21",cat:"review",steps:["Pull up your weak spots list from Day 21","Spend 30+ minutes on each one: read documentation, do hands-on labs, watch John Savill videos on the topic","Don't move on until you can explain each concept clearly out loud"]},
+    {id:"d29t2",text:"Quiz yourself on the MS ↔ Google translation table",cat:"review",steps:["Without looking: what's the Google equivalent of Conditional Access? (Context-Aware Access)","What's the Google equivalent of Group Policy? (OU-scoped Chrome policies / Admin Console settings)","What's the Google equivalent of Intune? (Google Endpoint Management)","What's the Google equivalent of Graph API? (Admin SDK + GAM)","What's the Google equivalent of Entra Security Groups? (Google Groups — but multi-purpose)","If you missed any, review the translation table from the 60-day plan document"]},
+  ]},
+  {day:30,label:"Start Applying",tasks:[
+    {id:"d30t1",text:"Apply to your first 3 jobs",cat:"career",steps:["Search LinkedIn, Indeed, and Dice for: 'Identity and Access Administrator', 'M365 Administrator', 'SaaS Administrator', 'Intune Administrator', 'Endpoint Management Engineer'","Filter for Remote or Fort Myers/Naples/FL area","For each application: read the job description carefully, tweak 2-3 resume bullets to match their specific keywords, write a brief cover note referencing their specific tech stack","Don't wait until you feel 100% ready — you're more prepared now than when you missed those earlier opportunities"]},
+    {id:"d30t2",text:"Celebrate — you've completed the 30-day core sprint 🎉",cat:"career",steps:["Seriously. Take a moment. In 30 days you've:","• Built and managed two sandbox environments (M365 + Google Workspace)","• Created 5+ Conditional Access policies from scratch","• Configured PIM, Autopilot, compliance policies, MAM, DLP — in BOTH platforms","• Written PowerShell scripts using Graph API","• Earned up to 3 Microsoft Applied Skills credentials","• Completely rewritten your resume and LinkedIn","• Practiced 5 interview answers until they're natural","• Started applying to jobs","That's a massive transformation. The next 30 days are about acceleration and repetition"]},
+  ]},
+  // ──── WEEKS 5-8: Abbreviated ────
+  ...[
+    {day:31,label:"Portfolio Project — Start",tasks:[{id:"d31t1",text:"Begin 'Zero-Trust Endpoint Deployment' case study",cat:"career",steps:["Create a Google Doc or Word doc","Outline: Executive Summary, Current State Assessment, Proposed Architecture (Entra + Intune + CA policies), Conditional Access Policy Matrix (table of all policies), Rollout Phases (pilot → department-by-department → org-wide), Success Metrics","This becomes a portfolio piece you can share with hiring managers — it shows strategic thinking, not just button-clicking"]}]},
+    {day:32,label:"SC-300 Prep",tasks:[{id:"d32t1",text:"Start SC-300 practice exam on MS Learn",cat:"cert",steps:["Go to learn.microsoft.com → search 'SC-300 practice assessment'","Take the full practice exam — note which areas you score low on","Focus study on: B2B/B2C (external identities), Identity Governance, and monitoring/reporting — these are commonly tested areas that hands-on work doesn't always cover"]},{id:"d32t2",text:"Study weak areas from practice exam",cat:"study",steps:["For each area you scored below 70%, find the corresponding MS Learn module and work through it","Pay special attention to Entra B2B (inviting external guest users) and Entra B2C (customer-facing identity) — these don't come up in daily admin work but ARE on the exam"]}]},
+    {day:33,label:"Apply + Study",tasks:[{id:"d33t1",text:"Apply to 3 more jobs",cat:"career",steps:["Customize resume bullets for each posting","Track applications in a spreadsheet: company, role, date applied, status"]},{id:"d33t2",text:"Continue SC-300 prep",cat:"study",steps:["Complete one full section of the practice assessment","Review explanations for any questions you got wrong"]}]},
+    {day:34,label:"Google Workspace Cert Prep",tasks:[{id:"d34t1",text:"Start Google Cloud Skills Boost: Workspace Admin path",cat:"study",steps:["Go to cloudskillsboost.google → search 'Google Workspace Administration'","Sign up for a free trial if available (30-day trials appear periodically)","Complete the first 2 labs — these are hands-on in a real Admin Console"]},{id:"d34t2",text:"Complete 2 labs",cat:"lab",steps:["Focus on: user/OU management and security settings labs","These reinforce what you already practiced in your own trial tenant"]}]},
+    {day:35,label:"Portfolio + Apply",tasks:[{id:"d35t1",text:"Write CA policy section of case study",cat:"career",steps:["Create a table listing each CA policy: Name, Target Users, Target Apps, Conditions, Grant Controls, Business Justification","Include a visual diagram showing the decision flow","This is the strongest section — it shows you can design CA architecture from scratch"]},{id:"d35t2",text:"Apply to 2 more jobs",cat:"career",steps:["Keep the momentum going — don't stop applying"]}]},
+    {day:36,label:"Advanced Intune",tasks:[{id:"d36t1",text:"Study Endpoint Analytics and Proactive Remediations",cat:"study",steps:["Read: learn.microsoft.com — search 'Endpoint Analytics' and 'Proactive remediations'","Endpoint Analytics: shows device startup performance, app reliability scores, and recommends improvements","Proactive remediations: PowerShell detection + remediation script pairs that run on schedule to fix issues before users report them"]},{id:"d36t2",text:"Create a proactive remediation script pair",cat:"lab",steps:["Detection script: checks if a condition exists (e.g., a temp folder is over 1GB)","Remediation script: fixes it (e.g., clears the temp folder)","Go to intune.microsoft.com → Devices → Remediations → '+ Create' → add both scripts → set schedule to daily"]}]},
+    {day:37,label:"Okta Exploration",tasks:[{id:"d37t1",text:"Create free Okta developer account",cat:"lab",steps:["Go to developer.okta.com → sign up for a free developer account","Explore the admin console — note similarities to Entra: users, groups, app integrations, policies","This broadens your identity provider experience beyond Microsoft/Google"]},{id:"d37t2",text:"Complete Okta Basics module",cat:"study",steps:["Okta has free training at developer.okta.com/docs/guides/","Focus on: how Okta handles SSO, MFA, lifecycle management, and universal directory","In interviews for orgs using Okta, you can say 'I've worked in Okta developer environments and understand the core concepts' — that's honest and differentiating"]}]},
+    {day:38,label:"Apply + Review",tasks:[{id:"d38t1",text:"Apply to 3 more jobs",cat:"career",steps:["Tailor resume per posting. Track in spreadsheet"]},{id:"d38t2",text:"Refine interview answers based on real feedback",cat:"interview",steps:["If you've had any phone screens or interviews, note the questions asked","Write out strong answers for any question that caught you off guard","Add these to your interview prep rotation"]}]},
+    {day:39,label:"Google Skills Boost Sprint",tasks:[{id:"d39t1",text:"Complete 2 more Google Admin labs",cat:"lab",steps:["Continue the Workspace Admin learning path on Cloud Skills Boost"]},{id:"d39t2",text:"Study Context-Aware Access in Google",cat:"study",steps:["Google's Context-Aware Access = Conditional Access","It evaluates: device OS, device compliance, IP address, geographic location","Requires Enterprise edition. Read: support.google.com/a/answer/9275380","Know the comparison: same concept as Entra CA but configured in Security → Access and data control → Context-Aware Access"]}]},
+    {day:40,label:"Portfolio Project — Finish",tasks:[{id:"d40t1",text:"Complete the case study PDF",cat:"career",steps:["Proof-read, format professionally, export as PDF","This should be 5-10 pages covering your zero-trust endpoint deployment plan"]},{id:"d40t2",text:"Share on LinkedIn",cat:"career",steps:["Post on LinkedIn with a brief description of what you built and what you learned","Tag it with: #IdentityManagement #ZeroTrust #MicrosoftEntra #Intune","Pin it to your Featured section"]}]},
+    {day:41,label:"SC-300 Practice",tasks:[{id:"d41t1",text:"Full-length SC-300 practice exam",cat:"cert",steps:["Target 80%+ to feel confident for the real exam"]},{id:"d41t2",text:"Study weak sections 30+ min",cat:"study",steps:["Focus on the areas where you still score below 70%"]}]},
+    {day:42,label:"Apply + Community",tasks:[{id:"d42t1",text:"Apply to 3 more jobs",cat:"career",steps:["Track everything in your spreadsheet"]},{id:"d42t2",text:"Answer 2 questions in sysadmin communities",cat:"career",steps:["Build your reputation. Teaching solidifies your own knowledge"]}]},
+    {day:43,label:"Advanced Identity",tasks:[{id:"d43t1",text:"Study B2B collaboration and guest access",cat:"study",steps:["Read: learn.microsoft.com — search 'Entra External Identities B2B'","B2B: inviting external users (vendors, partners) as guests. They authenticate with their own IdP. You can apply CA policies specifically to guest users","Know: how to invite guests, how to scope CA to 'Guest or external users', how cross-tenant access settings control which orgs can collaborate"]},{id:"d43t2",text:"Study cross-tenant access and tenant restrictions v2",cat:"study",steps:["Cross-tenant access settings: control B2B collaboration at the tenant level — which external orgs are allowed/blocked","Tenant restrictions v2: prevent YOUR users from accessing OTHER tenants with their personal accounts (data exfiltration prevention)"]}]},
+    {day:44,label:"Mock Interview",tasks:[{id:"d44t1",text:"Full 30-min mock interview",cat:"interview",steps:["Have someone grill you — a friend, partner, or use Claude","Cover: CA, Autopilot, SCIM, MAM vs MDM, identity lifecycle, Graph API, Google Workspace concepts"]},{id:"d44t2",text:"Self-assess strengths and gaps",cat:"review",steps:["Which answers flowed naturally? Those are your strengths — lead with these in real interviews","Which answers were shaky? Those need more practice or study"]}]},
+    {day:45,label:"Halfway Check",tasks:[{id:"d45t1",text:"Audit progress: applications sent, interviews scheduled",cat:"review",steps:["Count: how many jobs applied to? Any callbacks? Any interviews?","If 0 callbacks after 15+ applications: review your resume keywords vs job descriptions, consider broader geography or slightly different titles"]},{id:"d45t2",text:"Adjust strategy if needed",cat:"career",steps:["If not getting callbacks: try different job titles, expand to fully remote, consider contract/temp roles as a stepping stone","If getting interviews but not advancing: focus more on interview prep, practice with real people, record yourself"]}]},
+    {day:46,label:"Google Advanced",tasks:[{id:"d46t1",text:"Study Google Vault deep-dive",cat:"study",steps:["Google Vault handles: retention rules (how long to keep data), legal holds (preserve data for litigation), search and export (for eDiscovery)","Compare to Microsoft: Vault ≈ Purview Compliance Center + eDiscovery"]},{id:"d46t2",text:"Study Google Admin SDK API",cat:"study",steps:["Admin SDK = Google's equivalent of Microsoft Graph API","It covers: Directory API (users/groups/OUs), Reports API (audit logs), and Admin Settings API","GAM is built on top of Admin SDK — so you've already been using it indirectly"]}]},
+    {day:47,label:"Apply + Network",tasks:[{id:"d47t1",text:"Apply to 3 more jobs",cat:"career",steps:["Keep the cadence going"]},{id:"d47t2",text:"LinkedIn outreach to 2 people in target roles",cat:"career",steps:["Find people on LinkedIn with titles you're targeting at companies you'd want to work for","Send a brief connection request: 'Hi [name], I'm transitioning into identity and access management. I'd love to hear about your experience in the role — would you have 15 minutes for a quick chat?'","Most people are willing to help. These conversations give you insider info on what skills matter most"]}]},
+    {day:48,label:"SC-300 Final Prep",tasks:[{id:"d48t1",text:"Second full-length practice exam — target 80%+",cat:"cert",steps:["If scoring 80%+, you're ready to schedule the real exam","If below 80%, identify remaining gaps and study for 2-3 more days before scheduling"]},{id:"d48t2",text:"Deep-study any remaining weak areas",cat:"study",steps:["This is your last focused study day before the exam"]}]},
+    {day:49,label:"Certification Day",tasks:[{id:"d49t1",text:"Take SC-300 exam or schedule it within the next week",cat:"cert",steps:["The exam costs ~$165. Check for free voucher promotions at learn.microsoft.com/en-us/credentials/","Schedule at a Pearson VUE test center or take it online from home","Online proctoring requires: webcam, microphone, clean desk, no second monitors","Allow 2-3 hours. You'll get pass/fail results immediately"]}]},
+    {day:50,label:"Google Cert Push",tasks:[{id:"d50t1",text:"Complete remaining Google Workspace Admin labs",cat:"lab",steps:["Finish any remaining labs on Cloud Skills Boost"]},{id:"d50t2",text:"Earn Skill Badge if available",cat:"cert",steps:["Google Skill Badges appear on your Google Cloud profile and are shareable to LinkedIn"]}]},
+    {day:51,label:"Apply + Refine",tasks:[{id:"d51t1",text:"Apply to 3 more hybrid Google+Microsoft roles",cat:"career",steps:["Search for postings mentioning both Google Workspace AND Microsoft — these are rarer but you're uniquely qualified now"]},{id:"d51t2",text:"Update resume with new certs",cat:"career",steps:["Add SC-300 (if passed), any new Applied Skills, Skill Badges"]}]},
+    {day:52,label:"Advanced Automation",tasks:[{id:"d52t1",text:"Write end-to-end onboarding automation script",cat:"lab",steps:["Create a PowerShell script that: reads new hire data from CSV, creates Entra user, adds to dynamic groups, assigns licenses, generates TAP, sends welcome email","This is your showpiece automation — document it well"]},{id:"d52t2",text:"Publish as GitHub gist and add to resume",cat:"career",steps:["Go to gist.github.com → paste your script → make it public","Add the link to your resume's Automation bullet and LinkedIn Featured section"]}]},
+    {day:53,label:"Interview Bank",tasks:[{id:"d53t1",text:"Document all new interview questions encountered",cat:"interview",steps:["Write out strong answers for every real interview question you've been asked","Add them to your rotation"]},{id:"d53t2",text:"Research target companies' tech stacks",cat:"interview",steps:["For any upcoming interviews: search '[company name] tech stack' or look at their job descriptions for clues about what tools they use","Tailor your answers to reference their specific platforms"]}]},
+    {day:54,label:"Security Posture",tasks:[{id:"d54t1",text:"Study Microsoft Secure Score",cat:"study",steps:["Go to security.microsoft.com → Secure Score in your dev tenant","It measures your tenant's security posture and recommends improvements","Know what it measures and how to improve it — interviewers ask about this"]},{id:"d54t2",text:"Study Entra ID Protection in depth",cat:"study",steps:["Review: risky users report, risk-based CA policies, risk remediation policies","Understand: how does Microsoft detect risk? (impossible travel, anonymous IP, leaked credentials, malware-linked IPs)"]}]},
+    {day:55,label:"Apply + Share",tasks:[{id:"d55t1",text:"Apply to 3 more jobs",cat:"career",steps:["Keep going — many job searches take 30-60 applications before landing interviews"]},{id:"d55t2",text:"Write a LinkedIn learning post",cat:"career",steps:["Share one specific thing you learned during this sprint — a CA policy pattern, a PowerShell script, a Google vs Microsoft comparison","This positions you as someone actively growing and sharing knowledge"]}]},
+    {day:56,label:"Hybrid Identity Mastery",tasks:[{id:"d56t1",text:"Study Azure AD Connect / Cloud Sync",cat:"study",steps:["Azure AD Connect: syncs on-prem AD to Entra. Supports password hash sync, pass-through auth, federation with ADFS","Cloud Sync: lighter-weight alternative, agent-based, easier to set up, supports multi-forest","Know when to recommend each: Connect for complex environments, Cloud Sync for simpler setups"]},{id:"d56t2",text:"Study GCDS + Azure AD Connect coexistence",cat:"study",steps:["If AD is source of truth: AD Connect syncs to Entra, GCDS syncs to Google Cloud Identity","Both sync FROM AD — AD is the single authoritative source for user lifecycle","This architecture comes up in any org running both Microsoft and Google"]}]},
+    {day:57,label:"Final Mock Interview",tasks:[{id:"d57t1",text:"Full 45-min mock interview covering ALL topics",cat:"interview",steps:["Include Google Workspace questions this time — not just Microsoft","Have the interviewer ask unexpected questions to test adaptability","Record if possible — compare to your Day 28 recording. You should hear massive improvement"]},{id:"d57t2",text:"Self-assess: final strengths and remaining gaps",cat:"review",steps:["By now your strengths should be: CA policies, Intune, identity lifecycle, automation, cross-platform knowledge","Any remaining gaps are areas for continued learning after the sprint ends"]}]},
+    {day:58,label:"Final Application Push",tasks:[{id:"d58t1",text:"Apply to 5 more jobs — cast a wide net",cat:"career",steps:["Try different search terms: 'Cloud Identity Engineer', 'Directory Services Admin', 'IAM Administrator', 'Platform Engineer'","Consider contract/consulting roles — they often lead to full-time offers"]},{id:"d58t2",text:"Follow up on all pending applications",cat:"career",steps:["For any application over 1 week old with no response: find the recruiter or hiring manager on LinkedIn → send a brief follow-up expressing continued interest"]}]},
+    {day:59,label:"Final Review",tasks:[{id:"d59t1",text:"Review MS ↔ Google concept translation one last time",cat:"review",steps:["Quiz yourself cold — no notes. You should be able to translate any MS concept to Google and vice versa"]},{id:"d59t2",text:"Review all 5 interview questions one final time",cat:"review",steps:["These should feel second nature by now. If any still feel rehearsed, practice until they sound natural"]}]},
+    {day:60,label:"Sprint Complete 🎉",tasks:[{id:"d60t1",text:"Reflect: list everything learned and earned",cat:"review",steps:["Write a list of: every credential earned, every skill practiced, every policy built, every script written, every application sent","You've gone from 'IT Administrator' to 'Identity & Access Management Specialist with hands-on Entra, Intune, and Google Workspace experience plus verifiable Microsoft credentials'","That's not spin — that's real, demonstrable growth"]},{id:"d60t2",text:"Final LinkedIn and resume update",cat:"career",steps:["Add every new credential, update any bullets based on what you've learned, make sure Featured section has your case study and script"]},{id:"d60t3",text:"Celebrate — you've earned it",cat:"career",steps:["Seriously. What you've accomplished in 60 days is what many people take 6-12 months to do. Keep the momentum going, keep applying, and keep practicing. The role is coming"]}]},
+  ].flat(),
+];
+
+const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch{return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
+
+function App(){
+  const[completed,setCompleted]=useState(()=>LS.get("sp2-done")||{});
+  const[habitLog,setHabitLog]=useState(()=>LS.get("sp2-hab")||{});
+  const[startDate,setStartDate]=useState(()=>LS.get("sp2-start"));
+  const[selectedDay,setSelectedDay]=useState(null);
+  const[view,setView]=useState("today");
+  const[expandedTask,setExpandedTask]=useState(null);
+
+  const toggle=useCallback(id=>{setCompleted(p=>{const n={...p,[id]:!p[id]};LS.set("sp2-done",n);return n;});},[]);
+  const todayKey=new Date().toISOString().slice(0,10);
+  const toggleHabit=useCallback(id=>{setHabitLog(p=>{const dh=p[todayKey]||{};const n={...p,[todayKey]:{...dh,[id]:!dh[id]}};LS.set("sp2-hab",n);return n;});},[todayKey]);
+  const start=useCallback(()=>{setStartDate(todayKey);LS.set("sp2-start",todayKey);},[todayKey]);
+  const reset=useCallback(()=>{if(!confirm("Reset all progress?"))return;setCompleted({});setHabitLog({});setStartDate(null);setView("today");LS.del("sp2-done");LS.del("sp2-hab");LS.del("sp2-start");},[]);
+
+  const dayNum=startDate?Math.max(1,Math.ceil((Date.now()-new Date(startDate+"T00:00:00").getTime())/86400000)):0;
+  const totalTasks=DAYS.reduce((s,d)=>s+d.tasks.length,0);
+  const doneTasks=DAYS.reduce((s,d)=>s+d.tasks.filter(t=>completed[t.id]).length,0);
+  const pct=totalTasks?Math.round(doneTasks/totalTasks*100):0;
+  const todayHabits=habitLog[todayKey]||{};
+  const habitsDone=HABITS.filter(h=>todayHabits[h.id]).length;
+  let streak=0;
+  if(startDate){const now=new Date();now.setHours(0,0,0,0);for(let i=0;i<90;i++){const d=new Date(now);d.setDate(d.getDate()-i);const k=d.toISOString().slice(0,10);if(k<startDate)break;const dh=habitLog[k]||{};const a=HABITS.every(h=>dh[h.id]);if(i===0&&!a)continue;if(a)streak++;else break;}}
+
+  const activeDay=selectedDay||Math.min(dayNum,60);
+  const activeDayData=DAYS.find(d=>d.day===activeDay);
+  const activePhase=PHASES.find(p=>activeDay>=p.days[0]&&activeDay<=p.days[1]);
+  const currentPhaseIdx=dayNum<=7?0:dayNum<=14?1:dayNum<=21?2:dayNum<=30?3:4;
+  const f="'Outfit',sans-serif",m="'JetBrains Mono',monospace";
+
+  const TaskItem=({task,accent})=>{
+    const done=completed[task.id];const c=CAT[task.cat];const isExpanded=expandedTask===task.id;
+    return(
+      <div style={{marginBottom:6}}>
+        <div style={{display:"flex",alignItems:"flex-start",gap:10,padding:"12px 14px",background:done?`${accent||c.color}0A`:"#151D2E",border:done?`1px solid ${c.color}25`:"1px solid #1E293B",borderRadius:isExpanded?"10px 10px 0 0":"10px",transition:"all 0.15s"}}>
+          <button onClick={e=>{e.stopPropagation();toggle(task.id);}} style={{width:22,height:22,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:done?c.color:"transparent",border:done?"none":`2px solid ${c.color}55`,fontSize:12,color:"#fff",flexShrink:0,marginTop:1,cursor:"pointer",padding:0}}>{done?"✓":""}</button>
+          <button onClick={()=>setExpandedTask(isExpanded?null:task.id)} style={{flex:1,minWidth:0,background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0}}>
+            <div style={{fontSize:13.5,color:done?"#4B5563":"#D1D5DB",fontWeight:400,textDecoration:done?"line-through":"none",lineHeight:1.5,fontFamily:f}}>{task.text}</div>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
+              <span style={{padding:"2px 8px",borderRadius:4,fontSize:9,fontFamily:m,letterSpacing:0.5,color:c.color,background:`${c.color}15`}}>{c.label}</span>
+              {task.steps&&<span style={{fontSize:9,color:"#64748B",fontFamily:m}}>{isExpanded?"▲ Hide steps":"▼ "+task.steps.length+" steps"}</span>}
+            </div>
+          </button>
+        </div>
+        {isExpanded&&task.steps&&(
+          <div style={{background:"#0D1525",border:"1px solid #1E293B",borderTop:"none",borderRadius:"0 0 10px 10px",padding:"10px 14px 14px"}}>
+            <div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:1.5,textTransform:"uppercase",marginBottom:8}}>Step-by-Step Guide</div>
+            {task.steps.map((step,i)=>(
+              <div key={i} style={{display:"flex",gap:8,marginBottom:6,alignItems:"flex-start"}}>
+                <span style={{fontSize:10,fontFamily:m,color:c.color,fontWeight:600,flexShrink:0,marginTop:3,minWidth:16,textAlign:"right"}}>{step.startsWith("•")||step.startsWith("$")||step.startsWith("Connect-")||step.startsWith("Get-")||step.startsWith("New-")||step.startsWith("foreach")||step.startsWith("}")||step.startsWith(")")||step.startsWith("Write-")?"":i+1+"."}</span>
+                <span style={{fontSize:12.5,color:"#B0BEC5",lineHeight:1.6,fontFamily:step.startsWith("$")||step.startsWith("Connect-")||step.startsWith("Get-")||step.startsWith("New-")||step.startsWith("foreach")||step.startsWith("}")||step.startsWith(")")||step.startsWith("Write-")||step.startsWith("gam ")||step.startsWith("Install-")?m:f,background:step.startsWith("$")||step.startsWith("Connect-")||step.startsWith("Get-")||step.startsWith("New-")||step.startsWith("foreach")||step.startsWith("}")||step.startsWith(")")||step.startsWith("Write-")||step.startsWith("gam ")||step.startsWith("Install-")?"#1a2236":"transparent",padding:step.startsWith("$")||step.startsWith("Connect-")?"4px 8px":"0",borderRadius:4,wordBreak:"break-word"}}>{step}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return(
+    <div style={{minHeight:"100dvh",background:"#0B1120",color:"#E2E8F0",fontFamily:f}}>
+      {/* HEADER */}
+      <div style={{background:"linear-gradient(180deg,#111827,#0B1120)",borderBottom:"1px solid #1E293B",padding:"20px 20px 16px",position:"sticky",top:0,zIndex:10}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+          <div>
+            <div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:3,textTransform:"uppercase"}}>Mission Control</div>
+            <h1 style={{fontSize:20,fontWeight:800,margin:"4px 0 0",background:"linear-gradient(135deg,#38BDF8,#A78BFA)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>60-Day Career Sprint</h1>
+          </div>
+          {startDate&&<div style={{textAlign:"right"}}><div style={{fontSize:32,fontWeight:800,fontFamily:m,color:dayNum>60?"#EF4444":"#38BDF8",lineHeight:1}}>{Math.min(dayNum,60)}</div><div style={{fontSize:9,color:"#475569",fontFamily:m,letterSpacing:1}}>/ 60 DAYS</div></div>}
+        </div>
+        {!startDate?<button onClick={start} style={{width:"100%",padding:"14px",background:"linear-gradient(135deg,#3B82F6,#8B5CF6)",border:"none",borderRadius:10,color:"#fff",fontSize:15,fontWeight:700,fontFamily:f,cursor:"pointer",marginTop:14}}>🚀 Start My 60-Day Sprint</button>
+        :<>
+          <div style={{marginTop:12}}><div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}><span style={{fontSize:11,color:"#64748B",fontFamily:m}}>{doneTasks}/{totalTasks}</span><span style={{fontSize:11,fontWeight:700,fontFamily:m,color:pct===100?"#10B981":"#38BDF8"}}>{pct}%</span></div><div style={{height:6,background:"#1E293B",borderRadius:3,overflow:"hidden"}}><div style={{height:"100%",width:`${pct}%`,background:pct===100?"#10B981":"linear-gradient(90deg,#3B82F6,#A78BFA)",borderRadius:3,transition:"width 0.5s"}}/></div></div>
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8,marginTop:10}}>
+            {[{l:"Streak",v:`${streak}d`,i:"🔥"},{l:"Habits",v:`${habitsDone}/3`,i:"✅"},{l:"Day",v:`${Math.min(dayNum,60)}`,i:PHASES[currentPhaseIdx]?.icon}].map((s,i)=><div key={i} style={{background:"#151D2E",borderRadius:8,padding:"8px 6px",textAlign:"center",border:"1px solid #1E293B"}}><div style={{fontSize:14}}>{s.i}</div><div style={{fontSize:18,fontWeight:700,fontFamily:m,color:"#F1F5F9"}}>{s.v}</div><div style={{fontSize:8,color:"#475569",fontFamily:m,letterSpacing:1,textTransform:"uppercase",marginTop:2}}>{s.l}</div></div>)}
+          </div>
+        </>}
+      </div>
+      {/* TABS */}
+      {startDate&&<div style={{display:"flex",background:"#111827",borderBottom:"1px solid #1E293B",position:"sticky",top:148,zIndex:9}}>
+        {[{k:"today",l:"Today"},{k:"calendar",l:"Calendar"},{k:"phases",l:"Phases"}].map(t=><button key={t.k} onClick={()=>{setView(t.k);if(t.k==="today"){setSelectedDay(null);setExpandedTask(null);}}} style={{flex:1,padding:"9px 0",border:"none",cursor:"pointer",fontFamily:m,fontSize:10,letterSpacing:1.5,textTransform:"uppercase",background:view===t.k?"#0B1120":"transparent",color:view===t.k?"#38BDF8":"#475569",borderBottom:view===t.k?"2px solid #38BDF8":"2px solid transparent"}}>{t.l}</button>)}
+      </div>}
+      <div style={{padding:"16px 16px 120px"}}>
+        {/* TODAY */}
+        {startDate&&view==="today"&&(()=>{const td=DAYS.find(d=>d.day===Math.min(dayNum,60));if(!td)return null;const ph=PHASES.find(p=>td.day>=p.days[0]&&td.day<=p.days[1]);const tdDone=td.tasks.filter(t=>completed[t.id]).length;return<>
+          <div style={{marginBottom:20}}>
+            <div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Daily Habits — {new Date().toLocaleDateString("en-US",{weekday:"long",month:"short",day:"numeric"})}</div>
+            {HABITS.map(h=>{const done=todayHabits[h.id];return<button key={h.id} onClick={()=>toggleHabit(h.id)} style={{display:"flex",alignItems:"center",gap:12,width:"100%",padding:"12px 14px",background:done?"rgba(16,185,129,0.06)":"#151D2E",border:done?"1px solid rgba(16,185,129,0.25)":"1px solid #1E293B",borderRadius:10,marginBottom:6,cursor:"pointer",textAlign:"left"}}><div style={{width:22,height:22,borderRadius:6,display:"flex",alignItems:"center",justifyContent:"center",background:done?"#10B981":"transparent",border:done?"none":"2px solid #374151",fontSize:12,color:"#fff",flexShrink:0}}>{done?"✓":""}</div><div style={{fontSize:13.5,color:done?"#10B981":"#D1D5DB",fontWeight:500,textDecoration:done?"line-through":"none",fontFamily:f,flex:1}}>{h.text}</div><span style={{fontSize:16,flexShrink:0}}>{h.icon}</span></button>;})}
+          </div>
+          <div style={{marginBottom:16}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:2,textTransform:"uppercase"}}>Day {td.day} — {td.label}</div><span style={{fontSize:11,fontFamily:m,color:tdDone===td.tasks.length?"#10B981":"#64748B"}}>{tdDone}/{td.tasks.length}</span></div>
+            {ph&&<div style={{display:"inline-block",padding:"4px 10px",borderRadius:6,fontSize:10,fontFamily:m,color:ph.color,background:`${ph.color}12`,border:`1px solid ${ph.color}25`,marginBottom:10}}>{ph.icon} {ph.title}</div>}
+            <div style={{background:"#131B2E",border:"1px solid #1E293B",borderRadius:8,padding:"10px 12px",marginBottom:12,fontSize:11,color:"#94A3B8",lineHeight:1.6}}>💡 <strong style={{color:"#CBD5E1"}}>Tap any task</strong> to expand step-by-step instructions showing exactly what to click and where.</div>
+            {td.tasks.map(t=><TaskItem key={t.id} task={t} accent={ph?.color}/>)}
+          </div>
+        </>;})()}
+        {/* CALENDAR */}
+        {startDate&&view==="calendar"&&<>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:4,marginBottom:16}}>
+            {["S","M","T","W","T","F","S"].map((d,i)=><div key={i} style={{textAlign:"center",fontSize:9,fontFamily:m,color:"#475569",padding:"4px 0"}}>{d}</div>)}
+            {(()=>{const sd=new Date(startDate+"T00:00:00");const dow=sd.getDay();const cells=[];for(let i=0;i<dow;i++)cells.push(<div key={`p${i}`}/>);for(let i=1;i<=60;i++){const dd=DAYS.find(d=>d.day===i);const allD=dd?dd.tasks.every(t=>completed[t.id]):false;const someD=dd?dd.tasks.some(t=>completed[t.id]):false;const isCur=i===Math.min(dayNum,60);const ph=PHASES.find(p=>i>=p.days[0]&&i<=p.days[1]);cells.push(<button key={i} onClick={()=>{setSelectedDay(i);setView("day");setExpandedTask(null);}} style={{width:"100%",aspectRatio:"1",borderRadius:8,border:isCur?"2px solid #38BDF8":"1px solid #1E293B",background:allD?`${ph?.color}20`:someD?"#1a2236":"#111827",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:0}}><span style={{fontSize:12,fontWeight:isCur?800:500,fontFamily:m,color:allD?"#10B981":isCur?"#38BDF8":"#94A3B8"}}>{i}</span>{allD&&<div style={{width:4,height:4,borderRadius:2,background:"#10B981",marginTop:2}}/>}{someD&&!allD&&<div style={{width:4,height:4,borderRadius:2,background:"#F59E0B",marginTop:2}}/>}</button>);}return cells;})()}
+          </div>
+          {PHASES.map(p=>{const pd=DAYS.filter(d=>d.day>=p.days[0]&&d.day<=p.days[1]);const dn=pd.reduce((s,d)=>s+d.tasks.filter(t=>completed[t.id]).length,0);const tt=pd.reduce((s,d)=>s+d.tasks.length,0);const pp=tt?Math.round(dn/tt*100):0;return<div key={p.title} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"#151D2E",borderRadius:8,border:"1px solid #1E293B",marginBottom:4}}><span style={{fontSize:14}}>{p.icon}</span><div style={{flex:1}}><div style={{fontSize:11,fontWeight:600,color:"#CBD5E1"}}>{p.title}</div><div style={{fontSize:9,fontFamily:m,color:"#475569"}}>Days {p.days[0]}–{p.days[1]}</div></div><div style={{width:60}}><div style={{height:4,background:"#1E293B",borderRadius:2,overflow:"hidden"}}><div style={{height:"100%",width:`${pp}%`,background:pp===100?"#10B981":p.color,borderRadius:2}}/></div><div style={{fontSize:9,fontFamily:m,color:pp===100?"#10B981":"#64748B",textAlign:"right",marginTop:2}}>{pp}%</div></div></div>;})}
+        </>}
+        {/* DAY DETAIL */}
+        {startDate&&view==="day"&&activeDayData&&<>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}>
+            <button onClick={()=>{setSelectedDay(Math.max(1,activeDay-1));setExpandedTask(null);}} disabled={activeDay<=1} style={{padding:"6px 14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,color:activeDay<=1?"#334155":"#94A3B8",cursor:activeDay<=1?"default":"pointer",fontFamily:m,fontSize:12}}>←</button>
+            <div style={{textAlign:"center"}}><div style={{fontSize:22,fontWeight:800,fontFamily:m,color:activePhase?.color||"#38BDF8"}}>Day {activeDay}</div><div style={{fontSize:11,color:"#64748B"}}>{activeDayData.label}</div></div>
+            <button onClick={()=>{setSelectedDay(Math.min(60,activeDay+1));setExpandedTask(null);}} disabled={activeDay>=60} style={{padding:"6px 14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,color:activeDay>=60?"#334155":"#94A3B8",cursor:activeDay>=60?"default":"pointer",fontFamily:m,fontSize:12}}>→</button>
+          </div>
+          {activePhase&&<div style={{display:"inline-block",padding:"4px 10px",borderRadius:6,fontSize:10,fontFamily:m,color:activePhase.color,background:`${activePhase.color}12`,border:`1px solid ${activePhase.color}25`,marginBottom:12}}>{activePhase.icon} {activePhase.title}</div>}
+          {activeDayData.tasks.map(t=><TaskItem key={t.id} task={t}/>)}
+          <button onClick={()=>setView("calendar")} style={{width:"100%",padding:"10px",background:"transparent",border:"1px solid #1E293B",borderRadius:8,color:"#64748B",fontFamily:m,fontSize:11,cursor:"pointer",marginTop:12}}>← Back to Calendar</button>
+        </>}
+        {/* PHASES */}
+        {startDate&&view==="phases"&&<>{PHASES.map(phase=>{const pd=DAYS.filter(d=>d.day>=phase.days[0]&&d.day<=phase.days[1]);const dn=pd.reduce((s,d)=>s+d.tasks.filter(t=>completed[t.id]).length,0);const tt=pd.reduce((s,d)=>s+d.tasks.length,0);const pp=tt?Math.round(dn/tt*100):0;return<div key={phase.title} style={{marginBottom:10}}><div style={{padding:"14px 16px",background:"#151D2E",borderRadius:10,border:`1px solid ${pp===100?"#10B98133":"#1E293B"}`}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:18}}>{phase.icon}</span><div><div style={{fontSize:14,fontWeight:700,color:"#F1F5F9"}}>{phase.title}</div><div style={{fontSize:10,fontFamily:m,color:"#475569"}}>Days {phase.days[0]}–{phase.days[1]}</div></div></div><span style={{fontSize:13,fontFamily:m,color:pp===100?"#10B981":phase.color,fontWeight:700}}>{pp}%</span></div><div style={{height:4,background:"#0B1120",borderRadius:2,overflow:"hidden",marginBottom:10}}><div style={{height:"100%",width:`${pp}%`,background:pp===100?"#10B981":phase.color,borderRadius:2}}/></div><div style={{display:"flex",flexWrap:"wrap",gap:4}}>{pd.map(d=>{const allD=d.tasks.every(t=>completed[t.id]);const someD=d.tasks.some(t=>completed[t.id]);return<button key={d.day} onClick={()=>{setSelectedDay(d.day);setView("day");setExpandedTask(null);}} style={{padding:"4px 8px",borderRadius:6,border:allD?"1px solid #10B98133":"1px solid #1E293B",background:allD?"#10B98115":someD?"#F59E0B10":"#111827",cursor:"pointer",fontSize:10,fontFamily:m,color:allD?"#10B981":someD?"#F59E0B":"#64748B"}}>D{d.day}</button>;})}</div></div></div>;})}
+          <button onClick={reset} style={{width:"100%",padding:"10px",background:"transparent",border:"1px solid #EF444422",borderRadius:8,color:"#EF4444",fontSize:11,fontFamily:m,cursor:"pointer",marginTop:16}}>Reset All Progress</button>
+        </>}
+        {/* PRE-START */}
+        {!startDate&&<div style={{textAlign:"center",padding:"40px 20px"}}><div style={{fontSize:48,marginBottom:16}}>🎯</div><h2 style={{fontSize:20,fontWeight:700,color:"#F1F5F9",marginBottom:8}}>60 Days. Every Step Mapped.</h2><p style={{fontSize:14,color:"#94A3B8",lineHeight:1.6,maxWidth:300,margin:"0 auto"}}>{totalTasks} tasks with step-by-step instructions. Tap any task to see exactly what to click. Zero guesswork.</p><div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",gap:6,marginTop:20}}>{PHASES.map(p=><div key={p.title} style={{padding:"5px 10px",background:`${p.color}12`,border:`1px solid ${p.color}25`,borderRadius:6,fontSize:10,color:p.color,fontFamily:m}}>{p.icon} Days {p.days[0]}–{p.days[1]}</div>)}</div></div>}
+      </div>
+    </div>
+  );
+}
+ReactDOM.render(<App/>,document.getElementById("root"));
+</script>
+</body>
+</html>
