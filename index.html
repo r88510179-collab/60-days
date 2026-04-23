@@ -33,9 +33,45 @@ const CAT={
 };
 const DIFF=["","Easy","Medium","Hard"];
 const HABITS=[
-  {id:"h1",text:"30 min hands-on lab (Surface Pro + tenant)",icon:"⌨️"},
-  {id:"h2",text:"Complete 1 MS Learn module (MD-102 or SC-300)",icon:"🎓"},
-  {id:"h3",text:"Practice explaining one concept out loud",icon:"🎤"},
+  {id:"h1",text:"30 min hands-on lab in your tenant",icon:"⌨️",guide:[
+    "## Why daily",
+    "Muscle memory beats cramming. Thirty minutes every day builds the reflexes that show up in interview scenarios — you can click to a setting without thinking.",
+    "## What counts",
+    "Any deliberate action against your tenant: creating a group, tweaking a policy, running a PowerShell query, testing a sign-in under a CA rule.",
+    "Re-doing yesterday's task from memory counts — repetition is the point.",
+    "Passively browsing the portal does NOT count.",
+    "## If short on ideas",
+    "Preview tomorrow's task — click through the portal to find where the settings live, then come back and execute tomorrow.",
+    "Re-run a PowerShell script with different parameters to see what changes.",
+    "Read your own notes from 3 days ago and verify the config is still applied."
+  ]},
+  {id:"h2",text:"Complete 1 MS Learn module",icon:"🎓",guide:[
+    "## Purpose",
+    "MS Learn modules are 15–30 min chunks. One per day = full coverage of MD-102 and SC-300 content by Day 60.",
+    "## Where",
+    "Phase 1–2 (Days 1–30) → MD-102 paths: https://learn.microsoft.com/en-us/credentials/certifications/modern-desktop/",
+    "Phase 3 (Days 31–50) → SC-300 paths: https://learn.microsoft.com/en-us/credentials/certifications/identity-and-access-administrator/",
+    "## What counts",
+    "Read the whole module + complete its knowledge check. Score ≥80% or retake after a break.",
+    "## Skip rule",
+    "If today's scheduled task already includes a specific Learn module, that counts — don't double up.",
+    "## Track completion",
+    "MS Learn auto-tracks at https://learn.microsoft.com/en-us/users/me/transcript — check it every Friday."
+  ]},
+  {id:"h3",text:"Practice explaining one concept out loud",icon:"🎤",guide:[
+    "## Why out loud",
+    "Silent understanding is not interview fluency. Speaking forces you to fill gaps in real time — the same gaps that appear under interview pressure.",
+    "## What to practice",
+    "Pick any concept from the last 3 days. Examples by phase:",
+    "• Phase 1–2: 'Walk me through Autopilot end to end', 'Difference between compliance and configuration policies', 'How does BitLocker key escrow work?'",
+    "• Phase 3: 'Explain Conditional Access in 60 seconds', 'What does PIM solve?', 'User risk vs sign-in risk — when do you use each?'",
+    "## How",
+    "2–3 minutes, no notes. Phone voice recorder on → talk → listen back once.",
+    "## What to fix on review",
+    "Filler words ('um', 'like', 'so basically')",
+    "Hedging ('I think', 'I guess', 'kind of')",
+    "Pace — slow down on key terms, don't rush the technical meat"
+  ]},
 ];
 const PHASES=[
   {days:[1,5],title:"Infrastructure & Lab Foundation",icon:"🔧",color:"#06B6D4"},
@@ -128,46 +164,105 @@ const DAYS=[
     ]},
   ]},
   {day:3,label:"Populate Your Directory",tasks:[
-    {id:"d3t1",text:"Create 15–25 dummy users via PowerShell",cat:"lab",icon:"👥",time:"~45 min",diff:2,prereq:"d1t1",steps:[
+    {id:"d3t1",text:"Create 15–25 dummy users via PowerShell",cat:"lab",icon:"👥",time:"~60 min",diff:2,prereq:"d1t1",steps:[
       "## Why this task now",
-      "You need a populated directory before any later lab (groups, CA policies, Autopilot, access reviews) has anything meaningful to target. The PowerShell + Graph pattern you learn here returns in Day 16 (automation) and Day 40 (lifecycle workflows).",
-      "## Learn context (for later)",
-      "The identity management theory for this task is in the SC-300 path 'Implement an identity management solution' — but you start SC-300 on Day 31. For now you're executing the pattern so the next 28 days of labs have users to target. Understanding comes later; the reps come now.",
-      "## Find your tenant ID (you'll use it twice)",
-      "Go to https://entra.microsoft.com → Overview",
-      "Under 'Basic information' the Tenant ID shows as a GUID, e.g., 1a2b3c4d-5678-90ab-cdef-1234567890ab",
-      "Click the copy icon → save it in your password manager under the tenant entry (alongside the admin UPN)",
-      "## Install the Graph module",
-      "Right-click Start → Terminal (Admin) → confirm the top tab says PowerShell (not Command Prompt)",
-      "Install-Module Microsoft.Graph -Scope CurrentUser",
-      "If prompted to install NuGet provider → type Y and Enter",
-      "If prompted about untrusted repository (PSGallery) → type Y and Enter",
-      "## Connect to your tenant",
-      "Connect-MgGraph -Scopes 'User.ReadWrite.All','Organization.Read.All' -TenantId '<paste-tenant-id-here>'",
-      "A browser window opens → sign in with your Global Admin UPN from Day 1",
-      "Accept any permission consent prompt",
-      "Terminal returns 'Welcome To Microsoft Graph!' — you are connected",
-      "## Prepare the CSV",
-      "Open Notepad → save empty file to Desktop as users.csv (in Save dialog: 'Save as type' = All Files, filename = users.csv)",
-      "Paste this first row as the header: DisplayName,UPN,Department,JobTitle,Password",
-      "UPN = full sign-in identifier, e.g., john.smith@<your-tenant>.onmicrosoft.com",
-      "Add 20 rows across: IT (5), Legal (5), Sales (5), Marketing (3), Executives (2)",
-      "Each password must be strong — 12+ chars, mixed case, number, symbol",
-      "## Run the create-users script",
-      "In the same PowerShell terminal: cd $HOME\\Desktop",
+      "You need a populated directory before any later lab (groups, CA policies, Autopilot, access reviews) has anything meaningful to target. The PowerShell + Graph pattern here returns on Day 16 (automation), Day 40 (lifecycle workflows), and Day 42 (incident response).",
+      "## Learn context",
+      "Theory for this task lives in SC-300 path 'Implement an identity management solution' — you start that path on Day 31. Today you're executing the pattern so the next 28 days have users to target. Execute now, conceptualize later.",
+
+      "## Step 1 — Find and save your tenant ID",
+      "The tenant ID is a GUID that identifies your Entra tenant uniquely. You'll paste it into the Connect-MgGraph command in Step 3, and into roughly a dozen PowerShell/API calls throughout the sprint.",
+      "Open an InPrivate browser window → go to https://entra.microsoft.com",
+      "Sign in with your Global Admin UPN from Day 1",
+      "On the left nav, make sure you're in the Home view — the landing page",
+      "In the main area you'll see a tile called 'Tenant information' or 'Basic information' (the label moved between UI revisions). Tenant ID is displayed as a GUID: 1a2b3c4d-5678-90ab-cdef-1234567890ab",
+      "Click the small clipboard icon next to the Tenant ID to copy it",
+      "IMMEDIATELY: Today tab → Lab Reference (collapsed card above habits) → paste into Tenant ID field. It's now saved to this device and one tap away whenever a script needs it.",
+      "Microsoft's official doc with current screenshots: https://learn.microsoft.com/en-us/entra/fundamentals/how-to-find-tenant",
+
+      "## Step 2 — Install the Microsoft Graph PowerShell module",
+      "Open PowerShell as Administrator:",
+      "• Press the Windows key → type 'terminal'",
+      "• Right-click 'Terminal' in the results → 'Run as administrator'",
+      "• Click Yes on the UAC prompt",
+      "• Confirm the title bar reads 'Administrator: Windows PowerShell' — if it says 'Command Prompt', click the v-arrow at top of the Terminal window → select 'Windows PowerShell'",
+      "Run: Install-Module Microsoft.Graph -Scope CurrentUser",
+      "You'll see three possible prompts — answer them in this order:",
+      "• 'NuGet provider is required to continue... Do you want PowerShellGet to install and import the NuGet provider now?' → type Y, press Enter",
+      "• 'You are installing the modules from an untrusted repository... Are you sure you want to install the modules from PSGallery?' → type Y, press Enter (or A for 'Yes to All' to silence future prompts)",
+      "• Progress bar appears at the top of the terminal — install takes 2–5 minutes, downloads ~100 MB",
+      "When your prompt returns (PS C:\\Windows\\system32>), install is complete",
+      "Verify: Get-Module Microsoft.Graph -ListAvailable → should return several module names starting with 'Microsoft.Graph.'",
+      "Official doc with screenshots: https://learn.microsoft.com/en-us/powershell/microsoftgraph/installation",
+
+      "## Step 3 — Connect PowerShell to your tenant",
+      "Run: Connect-MgGraph -Scopes 'User.ReadWrite.All','Organization.Read.All','Directory.ReadWrite.All' -TenantId 'paste-your-tenant-id-here'",
+      "Replace 'paste-your-tenant-id-here' with the GUID from Step 1 (keep the single quotes)",
+      "What happens next:",
+      "• A browser window or tab pops open titled 'Sign in to your account'",
+      "• Sign in with your Global Admin UPN (admin@<your-tenant>.onmicrosoft.com)",
+      "• A consent prompt appears: 'Microsoft Graph Command Line Tools is requesting the following permissions' → lists User.ReadWrite.All, Organization.Read.All, Directory.ReadWrite.All",
+      "• Click Accept",
+      "• Browser shows 'You signed in to Microsoft Graph Command Line Tools. You can close this window.' → close it",
+      "Return to the PowerShell terminal — you should see: 'Welcome to Microsoft Graph!' — you are connected",
+      "If you get 'Could not open port' or a localhost redirect error: run Connect-MgGraph -UseDeviceAuthentication -Scopes '...' → it gives you a code to paste at microsoft.com/devicelogin instead",
+
+      "## Step 4 — Prepare the CSV file",
+      "You'll write 20 users in a CSV that PowerShell will read.",
+      "Option A (Notepad — simplest):",
+      "• Press Windows key → type 'notepad' → Enter",
+      "• Paste this exact header row as the FIRST line: DisplayName,UPN,Department,JobTitle,Password",
+      "• Add 20 user rows below (format: Name,upn@yourtenant.onmicrosoft.com,Department,JobTitle,Password123!)",
+      "• File → Save As → Desktop → File name: users.csv → 'Save as type' dropdown: change from 'Text Documents (*.txt)' to 'All Files (*.*)' → Save",
+      "Option B (Excel): Enter header in row 1, users in rows 2–21, Save As → CSV UTF-8",
+      "Department distribution for realism: IT (5), Legal (5), Sales (5), Marketing (3), Executives (2)",
+      "Password requirements for trial tenant: minimum 8 chars, must contain 3 of 4 (upper, lower, number, symbol). Safest: use 'LabPass2025!' or similar for all users (this is a lab, not production)",
+      "Example row: John Smith,john.smith@smokkelabs.onmicrosoft.com,IT,System Administrator,LabPass2025!",
+      "If unsure about UPN: it's the full email-format address using your tenant's .onmicrosoft.com domain from Day 1",
+
+      "## Step 5 — Run the create-users script",
+      "In the same PowerShell terminal (Connect-MgGraph session still active):",
+      "cd $HOME\\Desktop",
       "$users = Import-Csv './users.csv'",
+      "(verify: type $users and Enter → should list all 20 rows)",
       "foreach ($u in $users) {",
       "  New-MgUser -DisplayName $u.DisplayName -UserPrincipalName $u.UPN -Department $u.Department -JobTitle $u.JobTitle -MailNickname ($u.UPN.Split('@')[0]) -AccountEnabled -PasswordProfile @{Password=$u.Password; ForceChangePasswordNextSignIn=$false} -UsageLocation 'US'",
       "}",
-      "No output = success (PowerShell is quiet on success by design)",
-      "## Assign Business Premium licenses",
+      "Expected output: silence. PowerShell returns no text on success — this is by design.",
+      "If you get red errors, the most common causes:",
+      "• 'Insufficient privileges' — your Connect-MgGraph session lost the right scope. Re-run Step 3.",
+      "• 'Another object with the same value... already exists' — a duplicate UPN in your CSV or a prior partial run. Check entra.microsoft.com → Users to see who was created.",
+      "• 'The domain portion of the userPrincipalName property is invalid' — your UPN's domain doesn't match your actual tenant. Confirm the exact domain at entra.microsoft.com → Overview → Domain names.",
+      "Reference: https://learn.microsoft.com/en-us/powershell/module/microsoft.graph.users/new-mguser",
+
+      "## Step 6 — Assign Business Premium licenses to all users",
+      "Discover your SKU (Stock Keeping Unit — Microsoft's internal name for a license product):",
       "$sku = Get-MgSubscribedSku | Where-Object {$_.SkuPartNumber -eq 'SPB'}",
-      "(SPB = Microsoft 365 Business Premium's internal SKU name)",
-      "Get-MgUser -All | Where-Object {$_.UserPrincipalName -like \"*@$($sku.AccountName)*\"} | ForEach-Object { Set-MgUserLicense -UserId $_.Id -AddLicenses @(@{SkuId=$sku.SkuId}) -RemoveLicenses @() }",
-      "## Verify",
-      "https://entra.microsoft.com → Users — confirm all 20 accounts appear",
-      "Click any user → Licenses tab → confirm Microsoft 365 Business Premium is assigned",
-      "If any user shows no license: your tenant may only have the trial 25-seat cap — reduce to 20 users total and retry"
+      "$sku | Select SkuPartNumber, SkuId, ConsumedUnits, @{n='Total';e={$_.PrepaidUnits.Enabled}}",
+      "(SPB is the SkuPartNumber for Microsoft 365 Business Premium. Total should be 25 for the trial; ConsumedUnits is how many are already assigned.)",
+      "Assign the license to every unlicensed user:",
+      "Get-MgUser -All -Property 'Id','UserPrincipalName','AssignedLicenses' | Where-Object {$_.AssignedLicenses.Count -eq 0 -and $_.UserPrincipalName -notlike '*#EXT#*'} | ForEach-Object {",
+      "  Set-MgUserLicense -UserId $_.Id -AddLicenses @(@{SkuId=$sku.SkuId}) -RemoveLicenses @()",
+      "}",
+      "(The #EXT# filter skips guest users from other tenants — you have none yet, but this makes the script safe for later days.)",
+      "Full SKU reference (if SPB isn't your product): https://learn.microsoft.com/en-us/entra/identity/users/licensing-service-plan-reference",
+
+      "## Step 7 — Verify in the portal",
+      "https://entra.microsoft.com → Users (left nav under 'Identity')",
+      "User count should show 21+ (your admin + the 20 you created)",
+      "Click any user's Display name → opens their profile",
+      "• Overview tab: confirm Department and Job Title populated",
+      "• Licenses tab (left side): confirm 'Microsoft 365 Business Premium' listed with status 'Active'",
+      "• Sign-in logs tab: empty — they haven't signed in yet; normal",
+      "If any user shows no license:",
+      "• Trial tenants cap at 25 seats. Admin + 20 users = 21 — fine. If you created 25+ users, some won't license. Delete extras.",
+      "• Run Get-MgSubscribedSku again — if ConsumedUnits hit 25 before everyone got licensed, free up seats by deleting unassigned trial accounts you don't need.",
+
+      "## What you learned that you'll reuse",
+      "• The Install-Module / Connect-MgGraph / run-cmdlets flow is the template for every PowerShell + Graph task through Day 60",
+      "• Tenant ID + SkuPartNumber are values scripts need constantly — Lab Reference card keeps them one tap away",
+      "• CSV-driven bulk operations scale to any user count (not just 20) — this is the real-world onboarding pattern",
+      "• Silent success in PowerShell = output means a problem; no output means it worked"
     ]},
     {id:"d3t2",text:"Create security groups (static + dynamic)",cat:"lab",icon:"🗂️",time:"~20 min",diff:2,prereq:"d3t1",steps:[
       "## Assigned groups",
@@ -234,17 +329,77 @@ const DAYS=[
     ]},
   ]},
   {day:5,label:"First Device Enrollment",tasks:[
-    {id:"d5t1",text:"Entra Join the Surface Pro to your tenant",cat:"lab",icon:"🔗",time:"~20 min",diff:2,prereq:"d2t1",steps:[
-      "## Connect the device",
-      "On the Surface Pro → Settings → Accounts → Access work or school → '+ Connect'",
-      "Click 'Join this device to Microsoft Entra ID'",
-      "Sign in with a test user UPN (not the Global Admin)",
-      "Accept prompts → the device is now Entra Joined",
-      "## Verify in Entra",
-      "entra.microsoft.com → Devices — confirm the Surface Pro appears as 'Microsoft Entra joined'",
-      "## Verify in Intune",
-      "intune.microsoft.com → Devices — the Surface Pro should appear as enrolled",
-      "Automatic MDM enrollment means Entra Join triggers Intune enrollment in one step"
+    {id:"d5t1",text:"Entra Join the Surface Pro to your tenant",cat:"lab",icon:"🔗",time:"~25 min",diff:2,prereq:"d2t1",steps:[
+      "## Why this task now",
+      "Every endpoint management lab from this point (compliance, config profiles, BitLocker, Autopilot, app deployment) targets devices enrolled in Intune. Entra Join is the enrollment step that makes your Surface Pro visible to Intune — without it, there's nothing to target.",
+      "## Learn context",
+      "Device join theory is covered in MD-102 path 'Execute device enrollment' (your Day 4 study). You've read about Entra Join; today you execute it.",
+
+      "## Before you start — which user to use",
+      "Use one of the test users you created in d3t1, NOT your Global Admin.",
+      "Real environments never have admins signing into endpoints — that's a zero-trust violation. Practicing with a test user now builds the correct muscle memory.",
+      "Pick one from Entra → Users → copy their UPN (e.g., john.smith@smokkelabs.onmicrosoft.com)",
+      "Confirm they have a Business Premium license assigned (d3t1 Step 6 handled this)",
+
+      "## Step 1 — Sign out of any current Microsoft accounts on the Surface",
+      "On the Surface Pro: Settings → Accounts → Your info",
+      "If 'Email, calendar, and contacts' shows a personal account (Outlook.com, Xbox, etc.), click Manage my accounts and remove it",
+      "If 'Access work or school' shows any connection, click the entry → Disconnect → Yes",
+      "Restart the Surface Pro — clean slate for the join",
+
+      "## Step 2 — Initiate the Entra Join",
+      "After reboot, sign in to your local account",
+      "Open Settings (Win + I) → Accounts (left nav) → 'Access work or school'",
+      "Click 'Connect' (the + button)",
+      "A dialog opens titled 'Set up a work or school account'",
+      "IMPORTANT: Do NOT type the UPN in the top email field yet. Instead, look at the bottom of the dialog — click 'Join this device to Microsoft Entra ID' (small blue link text)",
+      "If you accidentally typed in the top field, click Back and look for the link again",
+      "Official doc with screenshots: https://learn.microsoft.com/en-us/entra/identity/devices/device-join-out-of-box",
+
+      "## Step 3 — Sign in and complete the join",
+      "Dialog title changes to 'Let's get you signed in'",
+      "Enter the test user's UPN (from Step 0 above) → Next",
+      "Password prompt → enter the password from your CSV (d3t1 Step 4)",
+      "MFA prompt may appear (if CA MFA policies are already active from a future task — not yet)",
+      "Dialog: 'Make sure this is your organization' → confirm the tenant name and domain match yours → Join",
+      "Dialog: 'You're all set!' → Done",
+      "## Expected completion time",
+      "Entra Join completes in <10 seconds. Intune enrollment (automatic afterward) takes 1–5 minutes to fully propagate policies.",
+
+      "## Step 4 — Verify on the Surface Pro",
+      "Settings → Accounts → Access work or school",
+      "You should see the test user's account listed with 'Connected to <your tenant>'s Azure AD'",
+      "Click the account entry → Info button",
+      "Scroll to 'Advanced Diagnostic Report' → click Create Report",
+      "Device ID, Tenant ID, and 'Work Account SID' should all be populated",
+      "Device state should show 'AzureAdJoined: YES' and 'MdmEnrollmentUrl' populated",
+
+      "## Step 5 — Verify in Entra (cloud side)",
+      "https://entra.microsoft.com → Devices → All devices",
+      "Find the Surface Pro by name (default name = the Windows computer name, often starts with DESKTOP- or LAB-)",
+      "Click the device row",
+      "• Join Type column should show 'Microsoft Entra joined'",
+      "• Owner column should show the test user's display name",
+      "• MDM column should show 'Microsoft Intune' (this confirms auto-enrollment worked)",
+
+      "## Step 6 — Verify in Intune (device management side)",
+      "https://intune.microsoft.com → Devices → All devices",
+      "Find the Surface Pro — may take 5–15 min to appear here",
+      "Click the device → Overview tab",
+      "• Compliance shows 'See Policy' or Compliant/Not compliant (Not compliant is expected — no compliance policy assigned yet; fixed on Day 6)",
+      "• Operating system shows Windows 10/11 with build number matching your d2t1 baseline",
+      "• Primary user shows the test user",
+      "• Enrollment type: 'User' (joined as a user-owned device)",
+
+      "## Common issues",
+      "• 'Something went wrong' during join — usually licensing. Verify the test user has a Business Premium license in entra.microsoft.com → Users → <user> → Licenses",
+      "• Device doesn't appear in Intune after 30 min — intune.microsoft.com → Devices → right side toolbar → 'Sync' forces a check-in. On the device: Settings → Accounts → Access work or school → account → Info → Sync",
+      "• Join fails with 'Your organization requires...' — a Conditional Access policy may be blocking. Since you haven't created CA policies yet, check for Security Defaults: entra.microsoft.com → Properties → Manage Security defaults → disable temporarily",
+
+      "## What you learned that you'll reuse",
+      "• Entra Join = cloud identity + automatic MDM enrollment in one action (this is the Business Premium / Entra P1 default)",
+      "• The 'Access work or school' settings page is the device-side source of truth for enrollment status",
+      "• Intune's Overview tab on a device is the single-pane-of-glass you'll return to for every device-level troubleshooting scenario (Days 6, 7, 11, 13, 22)"
     ]},
     {id:"d5t2",text:"Review device details and enrollment metadata",cat:"lab",icon:"📋",time:"~15 min",diff:1,prereq:"d5t1",steps:[
       "## Open the device record",
@@ -272,20 +427,118 @@ const DAYS=[
   ]},
   // ═══ PHASE 2: MD-102 DEVICE MANAGEMENT (Days 6–30) ═══
   {day:6,label:"Compliance Policies",tasks:[
-    {id:"d6t1",text:"Build your first compliance policy",cat:"lab",icon:"✅",time:"~30 min",diff:2,prereq:"d5t1",steps:[
-      "## Create the policy",
-      "intune.microsoft.com → Devices → Compliance → '+ Create policy'",
-      "Platform: Windows 10+ | Profile type: Windows 10/11 compliance policy",
-      "Name: 'COMP-Win11-Standard'",
-      "## Configure settings",
-      "Device Health: Require BitLocker, Require Secure Boot, Require Code Integrity",
-      "Device Properties: Minimum OS version = your baseline build from d2t1",
-      "System Security: Require password, Minimum password length 8, Password type: Alphanumeric",
-      "Defender: Real-time protection on, Signature up-to-date",
-      "## Assign and test",
-      "Assign to All Devices",
-      "Wait 15–30 min → check the Surface Pro's compliance status",
-      "A 'Noncompliant' result at first is expected if BitLocker is not yet on — fix in d6t2"
+    {id:"d6t1",text:"Build your first compliance policy",cat:"lab",icon:"✅",time:"~40 min",diff:2,prereq:"d5t1",steps:[
+      "## Why this task now",
+      "A compliance policy is Intune's way of asking 'is this device in a safe state?' — BitLocker on, Secure Boot enabled, password set, etc. The compliance RESULT (Compliant/Not compliant) is what Conditional Access in Phase 3 will consult to decide 'allow or block access to M365'. Without compliance policies, there's nothing for CA to evaluate.",
+      "## Learn context",
+      "MD-102 path 'Manage authentication and compliance' (your Day 6 study) explains the theory. Policies vs profiles distinction: a compliance policy EVALUATES state and returns pass/fail; a configuration profile ENFORCES settings (applies them). Two different concepts — don't conflate.",
+
+      "## Step 1 — Navigate to Compliance Policies",
+      "Open https://intune.microsoft.com (or use the bookmark from d1t2)",
+      "Sign in with your Global Admin UPN",
+      "Left nav: Devices → Compliance (under 'By platform' or the main 'Manage' section depending on UI version)",
+      "Current UI landing page shows: Policies tab, Notifications tab, Locations tab, etc. You want Policies (default tab)",
+      "If any Microsoft-managed default policies appear, leave them — we're adding our own",
+
+      "## Step 2 — Start creating the policy",
+      "Click '+ Create policy' button (top of the Policies list)",
+      "A side panel opens titled 'Create a policy'",
+      "• Platform: Windows 10 and later",
+      "• Profile type: Windows 10/11 compliance policy (the default option)",
+      "• Click Create button at the bottom of the panel",
+      "Official doc: https://learn.microsoft.com/en-us/mem/intune/protect/create-compliance-policy",
+
+      "## Step 3 — Basics tab",
+      "• Name: COMP-Win11-Standard",
+      "• Description: 'Baseline compliance for all Windows 11 endpoints — BitLocker, Secure Boot, password, Defender'",
+      "• Platform: Windows 10 and later (pre-filled)",
+      "• Click Next",
+      "(Naming convention COMP- prefix is a discipline you'll maintain throughout: COMP=compliance, CONF=configuration, AV=antivirus, ENC=encryption, etc. Makes policies instantly scannable in long lists.)",
+
+      "## Step 4 — Compliance settings tab (the meat of the policy)",
+      "Expand each section by clicking the section header, then configure:",
+      "",
+      "**Custom Compliance** — leave all at 'Not configured'",
+      "",
+      "**Device Health** — these evaluate integrity signals from Windows:",
+      "• Require BitLocker: Require",
+      "• Require Secure Boot to be enabled on the device: Require",
+      "• Require code integrity: Require",
+      "",
+      "**Device Properties** — these enforce OS version floors:",
+      "• Minimum OS version: enter the build from d2t1 (e.g., 10.0.22631.2428 — adjust to your actual build)",
+      "• Maximum OS version: leave blank",
+      "• Minimum OS required for mobile devices: leave blank (not applicable to Windows)",
+      "",
+      "**Configuration Manager Compliance** — leave all at 'Not configured' (you're not using SCCM)",
+      "",
+      "**System Security** — password and encryption settings:",
+      "• Require a password to unlock mobile devices: Require",
+      "• Simple passwords: Block",
+      "• Password type: Alphanumeric",
+      "• Minimum password length: 8",
+      "• Maximum minutes of inactivity before password is required: 15",
+      "• Password expiration (days): 90 (or leave blank for passwordless goals)",
+      "• Number of previous passwords to prevent reuse: 5",
+      "• Encryption of data storage on device: Require",
+      "• Firewall: Require",
+      "• Antivirus: Require",
+      "• Antispyware: Require",
+      "",
+      "**Microsoft Defender Antimalware** — enforce Defender is healthy:",
+      "• Microsoft Defender Antimalware: Require",
+      "• Microsoft Defender Antimalware minimum version: leave blank (any active version)",
+      "• Microsoft Defender Antimalware security intelligence up-to-date: Require",
+      "• Real-time protection: Require",
+      "",
+      "**Microsoft Defender for Endpoint** — leave at 'Not configured' (requires Defender for Endpoint license you don't have)",
+      "",
+      "Click Next",
+
+      "## Step 5 — Actions for noncompliance tab",
+      "Already has one default action: 'Mark device noncompliant' immediately (0 days)",
+      "Add a second action:",
+      "• Click '+ Add' below the list",
+      "• Action: Send email to end user",
+      "• Schedule (days after noncompliance): 1",
+      "• Message template: Create one (or use None for now — you can add a template later)",
+      "This gives users a 1-day grace period notification before CA starts blocking them.",
+      "Click Next",
+
+      "## Step 6 — Scope tags tab",
+      "Leave at Default",
+      "Click Next",
+      "(Scope tags become relevant in Day 15 for regional admin delegation — not needed yet.)",
+
+      "## Step 7 — Assignments tab",
+      "Under 'Included groups', click '+ Add all devices'",
+      "This assigns the policy to every enrolled device tenant-wide — exactly what we want for a baseline",
+      "Excluded groups: leave blank",
+      "Click Next",
+      "Review + create tab: scan all settings, click Create",
+
+      "## Step 8 — Wait for evaluation and check the Surface Pro",
+      "Evaluation takes 15–60 minutes for the first compliance check",
+      "To speed it up: on the Surface Pro → Settings → Accounts → Access work or school → your account → Info → Sync",
+      "Then in intune.microsoft.com → Devices → All devices → click your Surface Pro → Device compliance tab",
+      "Expected FIRST result: Not compliant",
+      "Click on the policy name to see WHICH setting failed — most likely 'Require BitLocker' because BitLocker isn't on yet",
+      "This is the expected sequence — d6t2 (next task) turns BitLocker on, then recheck",
+
+      "## Reading the compliance report",
+      "For each evaluated setting, the detail view shows: Passing state, Failing state, Error state, Not evaluated",
+      "A single failing setting marks the whole device Not compliant",
+      "Once BitLocker is enabled (d6t2), you'll force another sync and the policy should flip to Compliant",
+
+      "## Common issues",
+      "• Policy shows 'Not evaluated' forever — the device hasn't checked in. Force sync from the device or intune.microsoft.com → Devices → device → Sync button",
+      "• 'Minimum OS version' check fails unexpectedly — your build number format might be wrong. It should be 4 numbers separated by dots: 10.0.22631.2428 — not 23H2",
+      "• Device shows Compliant when you expected Not compliant — double-check you selected Require (not 'Not configured') for each setting",
+
+      "## What you learned that you'll reuse",
+      "• The 8-tab flow (Basics → Settings → Actions → Scope → Assignments → Review) is the template for EVERY Intune policy type you'll create (configuration, app protection, update rings, endpoint security) — Days 7, 8, 9, 13, 17, 18, 21",
+      "• COMP- naming prefix + descriptive suffix = scannable policy library",
+      "• Not compliant on first evaluation is normal — it tells you the policy is working, not broken"
     ]},
     {id:"d6t2",text:"Enable BitLocker on the Surface Pro",cat:"lab",icon:"🔐",time:"~30 min",diff:2,prereq:"d6t1",steps:[
       "## Turn on BitLocker",
@@ -358,18 +611,121 @@ const DAYS=[
     ]},
   ]},
   {day:8,label:"Application Deployment",tasks:[
-    {id:"d8t1",text:"Deploy Microsoft 365 Apps via Intune",cat:"lab",icon:"📦",time:"~45 min",diff:2,prereq:"d5t1",steps:[
-      "## Add the app",
-      "intune.microsoft.com → Apps → Windows → '+ Add'",
-      "App type: Microsoft 365 Apps (Windows 10 and later)",
-      "## Configure",
-      "Name: 'M365 Apps — Current Channel'",
-      "Select apps: Word, Excel, PowerPoint, Outlook, Teams, OneDrive",
-      "Architecture: 64-bit | Update channel: Current Channel",
-      "## Assign and verify",
-      "Assign as Required to All Devices",
-      "Force sync on Surface Pro — apps install silently in the background (20–40 min)",
-      "Open Word or Outlook on the Surface Pro to verify"
+    {id:"d8t1",text:"Deploy Microsoft 365 Apps via Intune",cat:"lab",icon:"📦",time:"~60 min (+ install wait)",diff:2,prereq:"d5t1",steps:[
+      "## Why this task now",
+      "Deploying M365 Apps via Intune instead of letting users install them manually is the standard enterprise pattern. It proves the device management stack end-to-end: Intune assigns → device receives → apps install silently → Intune reports success. This same 8-tab assignment flow reappears in d8t2 (Store apps), d9 (Update Rings), d13 (ASR policies), d17 (endpoint security), and d32 (Conditional Access).",
+      "## Learn context",
+      "MD-102 path 'Examine application management' (your Day 8 study) covers app types. Microsoft 365 Apps is a special case — Intune has a dedicated installer type for it that handles the XML configuration file Office deployment normally requires.",
+
+      "## Step 1 — Navigate to Apps",
+      "https://intune.microsoft.com → Apps (left nav)",
+      "Under 'By platform', click Windows",
+      "The main pane shows all Windows apps currently deployed — likely empty for your tenant",
+      "Click '+ Add' at the top",
+
+      "## Step 2 — Choose the app type",
+      "Side panel opens: 'Select app type'",
+      "In the dropdown under 'App type', select 'Microsoft 365 Apps' (under the 'Microsoft 365 Apps' group heading)",
+      "Sub-option appears: 'Windows 10 and later' — select it",
+      "Click Select button at the bottom",
+      "Official doc with screenshots: https://learn.microsoft.com/en-us/mem/intune/apps/apps-add-office365",
+
+      "## Step 3 — App suite information tab",
+      "The form auto-fills several fields based on the suite:",
+      "• Suite Name: change to 'M365 Apps — Current Channel' (or leave default if you prefer)",
+      "• Suite Description: 'Standard Microsoft 365 Apps for Enterprise deployment — Current Channel, 64-bit'",
+      "• Publisher: Microsoft (pre-filled)",
+      "• Category: Productivity (select from dropdown)",
+      "• Show this as a featured app in the Company Portal: Yes",
+      "• Information URL: leave blank",
+      "• Privacy URL: leave blank",
+      "• Developer: Microsoft (pre-filled)",
+      "• Owner: leave blank",
+      "• Notes: 'Baseline office suite for all users'",
+      "• Logo: pre-populated with Microsoft 365 logo (don't change)",
+      "Click Next",
+
+      "## Step 4 — Configure app suite tab (the critical one)",
+      "Configuration settings format: choose 'Configuration designer' (the GUI option; not XML)",
+      "Select Office apps — check ONLY these (uncheck Access, OneNote, Publisher, Skype for Business):",
+      "• Excel",
+      "• OneDrive (Groove.Exe — the desktop sync client)",
+      "• Outlook",
+      "• PowerPoint",
+      "• Teams",
+      "• Word",
+      "(Why limit? Installing only what users need reduces attack surface and disk footprint. Your company doesn't need Publisher.)",
+      "",
+      "Select other Office apps (license required): uncheck everything",
+      "",
+      "Architecture: 64-bit",
+      "",
+      "Update channel: Current Channel",
+      "(Options: Current Channel = monthly features + bug fixes [most orgs]; Current Channel Preview = one month ahead; Monthly Enterprise Channel = predictable monthly Tuesday; Semi-Annual Enterprise Channel = twice yearly, pilot; Semi-Annual Enterprise Channel = twice yearly, production. Stick with Current Channel for lab.)",
+      "",
+      "Remove other versions: Yes",
+      "(This uninstalls any pre-existing Office versions — MSI-based Office 2016, consumer Office, etc. Critical for clean deployments.)",
+      "",
+      "Version to install: Latest",
+      "",
+      "Specific version: leave blank",
+      "",
+      "Use shared computer activation: No",
+      "(Shared computer activation = multi-user scenarios like Session Hosts / Cloud PCs. Not applicable to your Surface Pro.)",
+      "",
+      "Accept the Microsoft Software License Terms on behalf of users: Yes",
+      "",
+      "Languages: English (United States) — add more if you have multilingual users",
+      "",
+      "Click Next",
+
+      "## Step 5 — Scope tags tab",
+      "Leave Default → Next",
+
+      "## Step 6 — Assignments tab",
+      "Three assignment types — use 'Required' for mandatory, silent install:",
+      "",
+      "Required section → '+ Add group' OR '+ Add all devices'",
+      "• For this lab: click '+ Add all devices'",
+      "• In production you'd usually target a user group (SG-AllEmployees from d3t2) for user-based targeting",
+      "",
+      "Available for enrolled devices: leave empty",
+      "(Available = shows in Company Portal for users to self-install. Good for optional apps.)",
+      "",
+      "Uninstall: leave empty",
+      "",
+      "Click Next",
+
+      "## Step 7 — Review + create",
+      "Scroll the summary — confirm apps, architecture, channel",
+      "Click Create",
+      "Wait for 'Microsoft 365 Apps — Current Channel was created successfully' notification at the top right",
+
+      "## Step 8 — Force the Surface Pro to sync and install",
+      "Installation starts on next device check-in — normally every 8 hours. To trigger now:",
+      "On the Surface Pro: Settings → Accounts → Access work or school → your account → Info → Sync",
+      "OR in Intune: Devices → All devices → select Surface Pro → Sync button in the toolbar",
+      "Install time: 20–40 minutes. This is a 3–4 GB download.",
+      "You'll see Office apps appear in Start Menu as they install — Word first, then Excel, then Outlook, etc.",
+
+      "## Step 9 — Verify the install",
+      "On the Surface Pro, press Windows key → type 'Word' → open Microsoft Word",
+      "First launch: Office runs a one-time activation. Sign in with the test user's UPN when prompted",
+      "File → Account → should show 'Subscription Product: Microsoft 365 Apps for business' + the test user's UPN",
+      "In Intune: Apps → Windows → click 'M365 Apps — Current Channel' → Device install status (left nav)",
+      "Should show '1 / Installed' for your Surface Pro",
+
+      "## Common issues",
+      "• Install stuck at 'Pending' for 1+ hour — force another sync. Check device is actually online.",
+      "• Install fails with error 0x87D13B9F — usually disk space or a conflict with existing Office. Verify Step 4 'Remove other versions' = Yes.",
+      "• Office installed but won't activate — the test user needs a Business Premium license assigned (d3t1 Step 6). Verify at entra.microsoft.com → Users → <user> → Licenses",
+      "• Apps don't appear in Start Menu — restart the Surface Pro; some shortcuts populate only after reboot",
+
+      "## What you learned that you'll reuse",
+      "• The 7-tab Intune app deployment flow (type → info → config → scope → assign → review → create) is the template for EVERY app type",
+      "• Required vs Available distinction — silent mandatory vs opt-in self-service",
+      "• Sync button on both device and Intune sides is your first debugging move for any deployment delay",
+      "• The Device install status report is where you prove to management 'we deployed to X devices, Y succeeded, Z failed with reason'"
     ]},
     {id:"d8t2",text:"Deploy a Microsoft Store app (Win32 install)",cat:"lab",icon:"📥",time:"~30 min",diff:2,prereq:"d8t1",steps:[
       "## Add the app",
@@ -468,26 +824,160 @@ const DAYS=[
     ]},
   ]},
   {day:11,label:"Windows Autopilot",tasks:[
-    {id:"d11t1",text:"Register the Surface Pro for Autopilot",cat:"lab",icon:"🚀",time:"~20 min",diff:2,prereq:"d5t1",steps:[
-      "## Run the hash collection script",
-      "On the Surface Pro, open PowerShell as Administrator:",
+    {id:"d11t1",text:"Register the Surface Pro for Autopilot",cat:"lab",icon:"🚀",time:"~30 min",diff:2,prereq:"d5t1",steps:[
+      "## Why this task now",
+      "Autopilot is the zero-touch provisioning workflow — unbox a device, turn it on, user signs in, device fully configures itself from the cloud. No IT tech, no imaging, no manual setup. This is THE interview topic for MD-102 and for endpoint engineering roles generally. You need to demonstrate (d12) that you can reprovision a device hands-off.",
+      "Step 1 here (hash collection) is how real IT departments register devices without a vendor relationship. For enterprise scale, Microsoft or your device OEM uploads hashes directly — but the script method is what you'll describe in interviews.",
+      "## Learn context",
+      "MD-102 path 'Deploy using cloud-based tools' (d11t3 study after this) covers Autopilot theory. The hardware hash is a 4KB blob that uniquely identifies a device to Microsoft's Autopilot service. Registering it tells Autopilot 'when this specific device boots, apply this profile'.",
+
+      "## Step 1 — Open PowerShell as Administrator on the Surface Pro",
+      "On the Surface Pro itself (not your daily driver):",
+      "Press Windows key → type 'terminal' → right-click 'Terminal' → Run as administrator → Yes on UAC",
+      "Confirm title bar reads 'Administrator:' prefix",
+
+      "## Step 2 — Allow script execution temporarily",
+      "Run: Set-ExecutionPolicy -Scope Process -ExecutionPolicy RemoteSigned -Force",
+      "(This loosens script restrictions for THIS PowerShell session only — closes when you close the window. Safe for lab.)",
+
+      "## Step 3 — Install the hash collection script",
       "Install-Script -Name Get-WindowsAutopilotInfo -Force",
+      "Prompts you may see:",
+      "• 'NuGet provider is required...' → Y + Enter",
+      "• 'You are installing the scripts from an untrusted repository...' → Y + Enter (or A for Yes to All)",
+      "Install takes 1–2 minutes",
+      "Official script: https://www.powershellgallery.com/packages/Get-WindowsAutopilotInfo",
+
+      "## Step 4 — Run the hash collection against your tenant (online mode)",
       "Get-WindowsAutopilotInfo -Online",
-      "Sign in with the Global Admin when prompted",
-      "## Verify registration",
-      "intune.microsoft.com → Devices → Enrollment → Windows → Devices (Autopilot)",
-      "The Surface Pro should appear within a few minutes"
+      "What happens:",
+      "• Script prompts for Graph permissions — a browser opens for MFA sign-in",
+      "• Sign in with your Global Admin UPN",
+      "• Consent to the permissions requested (DeviceManagementServiceConfig.ReadWrite.All)",
+      "• Script collects the hardware hash from the Surface Pro's TPM",
+      "• Script uploads the hash directly to your Intune Autopilot service",
+      "• Terminal returns: 'Device registration complete' or similar",
+      "Total time: 2–5 minutes",
+      "Official doc with screenshots: https://learn.microsoft.com/en-us/mem/autopilot/add-devices#using-powershell",
+
+      "## Step 5 — Verify registration in Intune",
+      "https://intune.microsoft.com → Devices → Enrollment → Windows (tab) → Windows Autopilot devices",
+      "(Some UI versions: Devices → Windows → Windows enrollment → Devices)",
+      "Your Surface Pro should appear in the list within 5–15 minutes",
+      "Columns to check:",
+      "• Serial number: matches the Surface Pro's serial (find on bottom of device or in Settings → System → About)",
+      "• Manufacturer: 'Microsoft Corporation'",
+      "• Model: 'Surface Pro 5' (or your exact model)",
+      "• Group Tag: empty (we'll use this later if we want multi-profile routing)",
+      "• Profile Status: 'Not assigned' — this will change after d11t2",
+
+      "## Alternative method (offline mode, if online fails)",
+      "If Step 4's online mode fails due to firewall or permissions issues:",
+      "Run: Get-WindowsAutopilotInfo -OutputFile C:\\autopilot-hash.csv",
+      "This creates a CSV with the hardware hash",
+      "Manually upload at intune.microsoft.com → Devices → Enrollment → Windows → Windows Autopilot devices → Import button",
+
+      "## Common issues",
+      "• 'Cannot find path' error on Install-Script — you didn't run PowerShell as Administrator",
+      "• Script hangs at hash collection — the TPM is disabled. Check with: Get-Tpm — if TpmPresent=False, enable TPM in UEFI (reboot, hold Volume Up + Power)",
+      "• 'Insufficient privileges to complete the operation' — your Global Admin account doesn't have the right scope. Run Connect-MgGraph with explicit scopes: DeviceManagementServiceConfig.ReadWrite.All",
+      "• Device appears but serial number shows dashes — hash collected from VM or TPM-less device. Not usable for Autopilot.",
+
+      "## What you learned that you'll reuse",
+      "• Hardware hash = 4 KB identifier that tells Autopilot 'recognize this specific device'",
+      "• Online mode (one step) vs offline mode (export then import) — online is preferred for small fleets, offline for vendor/OEM delivery",
+      "• The Windows Autopilot devices list is where you manage registered (but not yet deployed) hardware — separate from 'All devices' which shows enrolled (already provisioned) devices",
+      "• Device is now registered but NO profile assigned yet — d11t2 does that"
     ]},
-    {id:"d11t2",text:"Create an Autopilot deployment profile",cat:"lab",icon:"🧭",time:"~25 min",diff:2,prereq:"d11t1",steps:[
-      "## Create",
-      "intune.microsoft.com → Devices → Enrollment → Windows → Deployment Profiles → '+ Create profile'",
-      "Name: 'AP-Standard-UserDriven'",
-      "## Configure",
-      "Deployment mode: User-driven | Join type: Microsoft Entra joined",
-      "OOBE (Out-Of-Box Experience) settings: Hide privacy, Hide EULA, Hide change account options, User account type: Standard",
-      "Device name template: 'LAB-%SERIAL%'",
-      "## Assign",
-      "Assign to All devices (or a group containing your Autopilot devices)"
+    {id:"d11t2",text:"Create an Autopilot deployment profile",cat:"lab",icon:"🧭",time:"~30 min",diff:2,prereq:"d11t1",steps:[
+      "## Why this task now",
+      "The deployment profile is the 'how do I want this device configured?' definition. When a registered device (from d11t1) boots, Autopilot looks up the assigned profile and applies it during Out-Of-Box Experience (OOBE). Without a profile, the registered device just boots normally like any Windows install.",
+      "## Learn context",
+      "Three Autopilot deployment modes to know cold for interviews:",
+      "• User-driven — user signs in, becomes device owner. Standard corporate desktop/laptop. (What you're building today.)",
+      "• Self-deploying — no user interaction, device joins as itself. Kiosks, digital signage, shared room devices.",
+      "• Pre-provisioned (previously 'White Glove') — IT/vendor runs the heavy install phase before the user ever sees the device; user only signs in at the end.",
+      "MD-102 weights User-driven heaviest because it's the majority of real deployments.",
+
+      "## Step 1 — Navigate to deployment profiles",
+      "https://intune.microsoft.com → Devices → Enrollment → Windows (tab)",
+      "Scroll down to 'Windows Autopilot' section → click 'Deployment Profiles'",
+      "Click '+ Create profile' → select 'Windows PC' (not HoloLens)",
+
+      "## Step 2 — Basics tab",
+      "• Name: AP-Standard-UserDriven",
+      "• Description: 'Standard corporate deployment — User-driven, Entra joined, hidden OOBE screens, LAB- prefix naming'",
+      "• Convert all targeted devices to Autopilot: Yes",
+      "(This auto-registers any device that enrolls into your tenant via normal means — so future Entra Joins become Autopilot-capable without re-running d11t1's script.)",
+      "Click Next",
+      "Official doc: https://learn.microsoft.com/en-us/mem/autopilot/profiles",
+
+      "## Step 3 — Out-of-box experience (OOBE) tab — the heart of the profile",
+      "This tab controls what the user sees during first-boot setup:",
+      "",
+      "• Deployment mode: User-Driven",
+      "",
+      "• Join to Microsoft Entra ID as: Microsoft Entra joined",
+      "(Other option 'Microsoft Entra hybrid joined' is for on-prem AD scenarios — not your cloud-only lab.)",
+      "",
+      "• Microsoft Software License Terms: Hide",
+      "(Users don't need to accept EULA on every deployment — your company's IT ToS covers it.)",
+      "",
+      "• Privacy settings: Hide",
+      "(Skips the 5-page telemetry/location wizard. Corporate policy decides these, not end users.)",
+      "",
+      "• Hide change account options: Hide",
+      "(Prevents users from creating a local admin or personal account during OOBE — they MUST use their corporate identity.)",
+      "",
+      "• User account type: Standard",
+      "(Not Administrator. Principle of least privilege. If users need local admin for legitimate reasons, grant via separate Intune policy — don't bake it into the profile.)",
+      "",
+      "• Allow pre-provisioned deployment: No",
+      "(Yes only if you're doing the vendor hand-off pattern.)",
+      "",
+      "• Language (Region): Operating system default — or pick your region explicitly",
+      "",
+      "• Automatically configure keyboard: Yes",
+      "",
+      "• Apply device name template: Yes",
+      "• Enter a name: LAB-%SERIAL%",
+      "(Template placeholders: %SERIAL% = device serial, %RAND:x% = random digits. LAB- prefix makes lab devices scannable in device lists. In production: use COMPANY-%SERIAL% or COMPANY-%RAND:5%.)",
+      "",
+      "Click Next",
+
+      "## Step 4 — Scope tags tab",
+      "Default → Next",
+
+      "## Step 5 — Assignments tab",
+      "Included groups: '+ Add all devices'",
+      "(In production, you'd create a group called 'AutopilotDevices' and add only devices that should get this profile. For lab, all-devices is fine — you only have the Surface.)",
+      "Excluded groups: blank",
+      "Click Next",
+
+      "## Step 6 — Review + create",
+      "Scan the summary. Click Create.",
+      "Wait for success notification.",
+
+      "## Step 7 — Verify assignment on your registered device",
+      "https://intune.microsoft.com → Devices → Enrollment → Windows → Windows Autopilot devices",
+      "Click your Surface Pro",
+      "• Profile status: changes from 'Not assigned' to 'Assigning...' to 'Assigned' over 5–15 minutes",
+      "• Assigned profile: AP-Standard-UserDriven",
+      "If status stays 'Not assigned' after 30 min: Refresh the page, verify the assignment in the profile settings, confirm group assignment includes this device",
+
+      "## What's ready now (d12 uses this)",
+      "The registered Surface Pro + assigned profile = fully primed for zero-touch provisioning demo in d12",
+      "d12 triggers Autopilot Reset; the device reboots into OOBE; this profile runs; device returns to a managed state without you touching it",
+
+      "## Common issues",
+      "• Profile shows 'Not Applicable' on a device — the device was enrolled via a path other than Autopilot (like your manual d5t1 join). After this profile is created with 'Convert all targeted devices to Autopilot: Yes', it should eventually flip to Assigned — can take up to 24 hours first time.",
+      "• 'Waiting for assignment...' stuck for hours — force an Intune sync from the device, or wait. First-time profile assignment is slow.",
+      "• Name template fails to apply — template strings have strict rules. %SERIAL% must be uppercase; the resulting name must be ≤15 chars. LAB-%SERIAL% on a long serial will truncate.",
+
+      "## What you learned that you'll reuse",
+      "• Deployment profile = the 'how' of Autopilot (what the user sees during OOBE, what account type, what name)",
+      "• User-driven is the mainstream pattern; self-deploying and pre-provisioned are variants to know for interviews",
+      "• 'Convert all targeted devices to Autopilot: Yes' is the subtle setting that turns your tenant into an Autopilot-first environment"
     ]},
     {id:"d11t3",text:"MS Learn: 'Deploy using cloud-based tools' — Autopilot",cat:"study",icon:"📖",time:"~75 min",diff:2,steps:[
       "## Open the path",
@@ -622,26 +1112,169 @@ const DAYS=[
     ]},
   ]},
   {day:16,label:"PowerShell + Microsoft Graph",tasks:[
-    {id:"d16t1",text:"Query devices via Microsoft Graph",cat:"lab",icon:"⌨️",time:"~30 min",diff:2,prereq:"d3t1",steps:[
-      "## Connect",
-      "Connect-MgGraph -Scopes 'DeviceManagementManagedDevices.Read.All'",
-      "## List all enrolled devices",
-      "Get-MgDeviceManagementManagedDevice | Select DeviceName, ComplianceState, OperatingSystem, LastSyncDateTime | Format-Table",
-      "## Filter by compliance",
-      "Get-MgDeviceManagementManagedDevice -Filter \"complianceState eq 'noncompliant'\"",
-      "## Export to CSV",
-      "Get-MgDeviceManagementManagedDevice | Export-Csv -Path './devices.csv' -NoTypeInformation"
+    {id:"d16t1",text:"Query devices via Microsoft Graph",cat:"lab",icon:"⌨️",time:"~45 min",diff:2,prereq:"d3t1",steps:[
+      "## Why this task now",
+      "You've been clicking through the Intune portal for 10 days. Today you learn to get the same information via PowerShell + Microsoft Graph — the programmatic alternative. This is the 'I can automate reporting and bulk operations' story that separates senior candidates from button-clickers in interviews.",
+      "The skills from this task apply immediately: d16t2 (policy export), d20 (policy portfolio documentation), d27 (GitHub scripts repo). Script output becomes portfolio artifacts.",
+      "## Learn context",
+      "Microsoft Graph is the unified API behind all M365 management UIs. Every click in Intune or Entra ultimately calls a Graph endpoint. PowerShell cmdlets like Get-MgDeviceManagementManagedDevice wrap those API calls. Today's MS Learn study (d16t3) gives the conceptual background.",
+
+      "## Step 1 — Open PowerShell as Administrator on your daily driver",
+      "Not the Surface Pro this time — use a dev machine where you'll keep scripts",
+      "Press Windows key → 'terminal' → right-click → Run as administrator → Yes",
+      "cd $HOME\\Documents → make a folder: mkdir IntuneScripts → cd IntuneScripts",
+      "This is where your scripts live going forward",
+
+      "## Step 2 — Connect with device-read scopes",
+      "(You already installed Microsoft.Graph in d3t1. If not, re-run: Install-Module Microsoft.Graph -Scope CurrentUser)",
+      "Connect-MgGraph -Scopes 'DeviceManagementManagedDevices.Read.All','DeviceManagementConfiguration.Read.All' -TenantId '<your-tenant-id>'",
+      "Browser opens → sign in → consent to permissions → Welcome message",
+      "Note: Scopes are cumulative — more scopes = more you can do, but only grant what you need. This is the least-privilege principle (interview topic for Day 54).",
+
+      "## Step 3 — List all enrolled devices (basic query)",
+      "Get-MgDeviceManagementManagedDevice | Select DeviceName, ComplianceState, OperatingSystem, OsVersion, LastSyncDateTime | Format-Table -AutoSize",
+      "Expected output: a table with your Surface Pro (and any other enrolled devices)",
+      "What each column means:",
+      "• DeviceName — what you see in the portal",
+      "• ComplianceState — compliant / noncompliant / unknown / error",
+      "• OperatingSystem — Windows, iOS, Android, macOS",
+      "• OsVersion — full build number",
+      "• LastSyncDateTime — when the device last checked into Intune",
+      "Official cmdlet reference: https://learn.microsoft.com/en-us/powershell/module/microsoft.graph.devicemanagement/get-mgdevicemanagementmanageddevice",
+
+      "## Step 4 — Filter by compliance state",
+      "Get-MgDeviceManagementManagedDevice -Filter \"complianceState eq 'noncompliant'\" | Select DeviceName, ComplianceState, UserPrincipalName",
+      "The -Filter parameter uses OData syntax (not PowerShell syntax). Note the single quotes around 'noncompliant' — required.",
+      "Other filter examples:",
+      "• -Filter \"operatingSystem eq 'Windows'\"",
+      "• -Filter \"lastSyncDateTime lt 2025-01-01T00:00:00Z\" (devices that haven't synced since Jan 1)",
+
+      "## Step 5 — Find stale devices (no sync in 30 days)",
+      "$threshold = (Get-Date).AddDays(-30).ToString('yyyy-MM-ddTHH:mm:ssZ')",
+      "Get-MgDeviceManagementManagedDevice -Filter \"lastSyncDateTime lt $threshold\" | Select DeviceName, UserPrincipalName, LastSyncDateTime | Format-Table",
+      "Why this matters: stale devices = potential security risk (user left, device lost, offline forever). In interviews: 'I run a stale-device report weekly and action anything >30 days silent.'",
+
+      "## Step 6 — Export to CSV for reporting",
+      "Get-MgDeviceManagementManagedDevice | Select DeviceName, ComplianceState, OperatingSystem, OsVersion, LastSyncDateTime, UserPrincipalName, Manufacturer, Model, SerialNumber | Export-Csv -Path './all-devices.csv' -NoTypeInformation",
+      "Open the CSV in Excel → you have a shareable device inventory report",
+      "The -NoTypeInformation flag prevents PowerShell from adding a junk header row",
+      "This CSV is portfolio material — rename to something meaningful and commit to your GitHub repo (Day 27)",
+
+      "## Step 7 — Count devices by compliance status",
+      "Get-MgDeviceManagementManagedDevice | Group-Object -Property ComplianceState | Select Name, Count",
+      "Expected output:",
+      "  Name           Count",
+      "  ----           -----",
+      "  compliant      8",
+      "  noncompliant   2",
+      "  unknown        1",
+      "This one-liner gives you the compliance dashboard number — memorize it for interview 'how do you report on fleet health?' questions.",
+
+      "## Step 8 — Save your queries as a reusable script",
+      "Notepad → paste all the commands above with comments → save as .\\device-report.ps1 (in your IntuneScripts folder)",
+      "Next time you need the report: .\\device-report.ps1",
+      "This is what 'I automate reporting' means in interviews — show the script.",
+
+      "## Common issues",
+      "• 'Authentication_ExpiredToken' — your Connect-MgGraph session timed out. Re-run Connect-MgGraph.",
+      "• 'Insufficient privileges' — missing a scope. Add the needed scope to the Connect-MgGraph command and reconnect.",
+      "• -Filter returns nothing when data exists — OData filter syntax is strict. Single quotes around string values. Property names camelCase (complianceState not ComplianceState in filter).",
+      "• Format-Table truncates columns — pipe to Format-List instead to see full values for one device",
+
+      "## What you learned that you'll reuse",
+      "• Connect-MgGraph with specific scopes = interactive authentication to Graph API",
+      "• The Get-Mg* / Set-Mg* / New-Mg* / Remove-Mg* cmdlet families mirror Graph REST endpoints",
+      "• Piping to Select, Where, Group-Object, Export-Csv is the PowerShell reporting toolkit — same pattern applies to users, groups, policies, sign-in logs",
+      "• Saving scripts to a folder + version control = the 'I automate ops' story for interviews"
     ]},
-    {id:"d16t2",text:"Script: export all compliance and config policies to JSON",cat:"lab",icon:"💾",time:"~30 min",diff:3,prereq:"d16t1",steps:[
-      "## Connect with read scopes",
-      "Connect-MgGraph -Scopes 'DeviceManagementConfiguration.Read.All'",
-      "## Export compliance policies",
-      "Get-MgDeviceManagementDeviceCompliancePolicy | ConvertTo-Json -Depth 10 | Out-File './compliance-policies.json'",
-      "## Export configuration profiles",
-      "Get-MgDeviceManagementDeviceConfiguration | ConvertTo-Json -Depth 10 | Out-File './config-profiles.json'",
-      "## Why",
-      "JSON exports provide documentation and change tracking",
-      "Interview answer: 'I script policy exports for version control and audit trails'"
+    {id:"d16t2",text:"Script: export all compliance and config policies to JSON",cat:"lab",icon:"💾",time:"~45 min",diff:3,prereq:"d16t1",steps:[
+      "## Why this task now",
+      "Your tenant has ~10 policies by now (compliance, config profiles, app deployments, security baseline, updates). Six weeks from now you won't remember what each one does. JSON exports give you:",
+      "• Version-control-friendly documentation (commit to git, diff across time)",
+      "• Disaster recovery (restore from export if a policy is accidentally deleted)",
+      "• Audit evidence (prove to compliance what was configured on a given date)",
+      "• Template library (clone working policies for a new tenant)",
+      "## Learn context",
+      "Same Graph API, different endpoints. Every policy type has a dedicated Graph endpoint. The pattern of 'discover, enumerate, export' works for compliance, config, app protection, update rings, endpoint security — all of it.",
+
+      "## Step 1 — Set up the export directory",
+      "In your existing PowerShell session (from d16t1):",
+      "cd $HOME\\Documents\\IntuneScripts",
+      "mkdir exports -ErrorAction SilentlyContinue",
+      "$stamp = Get-Date -Format 'yyyy-MM-dd'",
+      "mkdir \"exports\\$stamp\"",
+      "cd \"exports\\$stamp\"",
+      "(The date-stamped folder gives you a point-in-time snapshot each time you export.)",
+
+      "## Step 2 — Ensure you have the right scopes",
+      "If Connect-MgGraph was already called with DeviceManagementConfiguration.Read.All in d16t1, you're set",
+      "Otherwise: Connect-MgGraph -Scopes 'DeviceManagementConfiguration.Read.All' -TenantId '<tenant-id>'",
+
+      "## Step 3 — Export all compliance policies",
+      "$compliance = Get-MgDeviceManagementDeviceCompliancePolicy",
+      "$compliance.Count  # how many you have",
+      "$compliance | ForEach-Object {",
+      "  $safename = $_.DisplayName -replace '[^a-zA-Z0-9\\-]','_'",
+      "  $_ | ConvertTo-Json -Depth 20 | Out-File -FilePath \".\\compliance-$safename.json\" -Encoding UTF8",
+      "}",
+      "(The $safename line strips characters invalid in filenames. -Depth 20 ensures nested properties serialize fully.)",
+      "After this runs: ls .\\compliance-*.json — you should see one JSON file per compliance policy",
+
+      "## Step 4 — Export all configuration profiles",
+      "$config = Get-MgDeviceManagementDeviceConfiguration",
+      "$config.Count",
+      "$config | ForEach-Object {",
+      "  $safename = $_.DisplayName -replace '[^a-zA-Z0-9\\-]','_'",
+      "  $_ | ConvertTo-Json -Depth 20 | Out-File -FilePath \".\\config-$safename.json\" -Encoding UTF8",
+      "}",
+
+      "## Step 5 — Export settings catalog configurations (modern format)",
+      "(Get-MgDeviceManagementDeviceConfiguration only catches the legacy template-based profiles. Settings Catalog profiles use a different endpoint.)",
+      "$settingsCatalog = Invoke-MgGraphRequest -Uri 'https://graph.microsoft.com/beta/deviceManagement/configurationPolicies' -Method GET",
+      "$settingsCatalog.value | ForEach-Object {",
+      "  $safename = $_.name -replace '[^a-zA-Z0-9\\-]','_'",
+      "  $_ | ConvertTo-Json -Depth 20 | Out-File -FilePath \".\\settingscatalog-$safename.json\" -Encoding UTF8",
+      "}",
+      "Note: Some settings catalog policies require a second Graph call to get their actual settings. For now the policy metadata is enough.",
+
+      "## Step 6 — Export app assignments",
+      "$apps = Get-MgDeviceAppManagementMobileApp",
+      "$apps | Select DisplayName, Id, '@odata.type', Publisher | Export-Csv -Path '.\\apps-inventory.csv' -NoTypeInformation",
+      "(Apps inventory goes to CSV because the full JSON is heavy and most reporting needs just the metadata.)",
+
+      "## Step 7 — Generate a summary report",
+      "@\"",
+      "Intune Policy Export — $stamp",
+      "==============================",
+      "Compliance policies: $($compliance.Count)",
+      "Configuration profiles (legacy): $($config.Count)",
+      "Settings Catalog policies: $($settingsCatalog.value.Count)",
+      "Deployed apps: $($apps.Count)",
+      "",
+      "Files written to: $(Get-Location)",
+      "\"@ | Out-File -FilePath '.\\SUMMARY.txt' -Encoding UTF8",
+      "Get-Content .\\SUMMARY.txt",
+
+      "## Step 8 — Save as a reusable export script",
+      "Combine all of the above into a single .ps1 file:",
+      "New-Item -ItemType File -Path $HOME\\Documents\\IntuneScripts\\export-all-policies.ps1 -Force",
+      "(Open that file in Notepad and paste all the commands from Steps 1–7)",
+      "Now you have an export-all-policies.ps1 script. Run it monthly. Each run creates a new dated folder.",
+
+      "## Step 9 — Put it in GitHub (for Day 27)",
+      "When you hit Day 27 (Publish your GitHub scripts repo), this script is one of the hero artifacts.",
+      "Add a README entry: 'export-all-policies.ps1 — Snapshots all Intune compliance, configuration, and settings catalog policies to timestamped JSON files for audit and version control.'",
+
+      "## Common issues",
+      "• 'Invoke-MgGraphRequest' unknown — the beta endpoint requires Microsoft.Graph.Beta module OR Invoke-MgGraphRequest (v2+). Update-Module Microsoft.Graph should fix it.",
+      "• JSON is 'corrupted' or incomplete — increase -Depth. Intune objects are heavily nested; -Depth 20 is the safe minimum.",
+      "• Encoding issues in JSON when opened later — always use -Encoding UTF8 on Out-File. Default PowerShell encoding can mangle special characters.",
+      "• 'Access denied' on Settings Catalog — your Connect-MgGraph session needs DeviceManagementConfiguration.ReadWrite.All (Read.All might not be enough for the beta endpoint).",
+
+      "## What you learned that you'll reuse",
+      "• Export + timestamp + version control = the 'I maintain audit-ready documentation' story",
+      "• Settings Catalog lives at a different endpoint than legacy templates — this distinction matters for SC-300/MD-102 exams",
+      "• Invoke-MgGraphRequest is the escape hatch when there's no dedicated cmdlet — it can call any Graph endpoint directly"
     ]},
     {id:"d16t3",text:"MS Learn: Microsoft Graph fundamentals",cat:"study",icon:"📖",time:"~60 min",diff:2,steps:[
       "## Learning path",
@@ -1059,21 +1692,123 @@ const DAYS=[
     ]},
   ]},
   {day:32,label:"Conditional Access — First Policies",tasks:[
-    {id:"d32t1",text:"Build CA Policy: Require MFA for all users",cat:"lab",icon:"🔑",time:"~25 min",diff:2,prereq:"d31t2",steps:[
+    {id:"d32t1",text:"Build CA Policy: Require MFA for all users",cat:"lab",icon:"🔑",time:"~45 min",diff:2,prereq:"d31t2",steps:[
+      "## Why this task now",
+      "Your first real Conditional Access policy is a rite of passage. Every piece of identity security from here on stacks on top of CA. You will be asked in every identity interview 'walk me through building a CA policy' — this task is your answer.",
+      "MFA for all users is the single most impactful security policy any tenant can deploy. It stops ~99% of account compromise attempts per Microsoft's own telemetry.",
       "## What CA is",
-      "CA = Conditional Access — the IF/THEN engine Entra uses to decide whether a sign-in is allowed, blocked, or requires an extra step",
-      "## Create",
-      "entra.microsoft.com → Protection → Conditional Access → Policies → '+ New policy'",
-      "Name: 'CA001-Require-MFA-AllUsers'",
-      "Users: All users (exclude a break-glass admin)",
-      "Target resources: All cloud apps",
-      "Grant: Require multifactor authentication",
-      "## Test in Report-only mode FIRST",
-      "Set 'Enable policy' to Report-only",
-      "Wait 24 hours → review sign-in logs to see who would be impacted",
-      "Then switch to On",
-      "## Break-glass account note",
-      "Always exclude at least one admin from MFA policies — prevents lockout if MFA infrastructure fails"
+      "Conditional Access = Entra's IF/THEN engine. For each sign-in attempt, it evaluates: IF (who + what resource + what conditions) THEN (grant / block / require extra controls). Policies are evaluated in parallel; if any policy blocks, the sign-in is blocked.",
+
+      "## CRITICAL: Break-glass account first",
+      "Before creating ANY CA policy that could lock people out: create an emergency account that's excluded from all policies.",
+      "entra.microsoft.com → Users → + New user → Create new user",
+      "• User principal name: breakglass@<your-tenant>.onmicrosoft.com",
+      "• Display name: Emergency Break-Glass Admin",
+      "• Password: use a 20+ character random password — save in password manager AND write on paper stored offline",
+      "Then: Users → select breakglass → Assigned roles → + Add assignments → Global Administrator",
+      "This account must NEVER be used for daily work. It exists only to fix catastrophic lockouts.",
+      "Official Microsoft guidance: https://learn.microsoft.com/en-us/entra/identity/role-based-access-control/security-emergency-access",
+
+      "## Step 1 — Navigate to Conditional Access",
+      "https://entra.microsoft.com → Protection (left nav) → Conditional Access",
+      "You land on Overview → click Policies in the sub-nav",
+      "If there are existing Microsoft-managed policies (sometimes pre-provisioned with Business Premium), leave them alone",
+      "Click '+ New policy'",
+      "Official doc with screenshots: https://learn.microsoft.com/en-us/entra/identity/conditional-access/concept-conditional-access-policies",
+
+      "## Step 2 — Name the policy",
+      "Name: CA001-Require-MFA-AllUsers",
+      "(Naming convention: CA### prefix + terse action description. Numbering helps enforce ordering in your documentation — Day 51 walkthrough.)",
+
+      "## Step 3 — Assignments: Users",
+      "Click 'Users' (under Assignments)",
+      "",
+      "Include tab:",
+      "• Select 'All users'",
+      "• You'll see a warning: 'This policy will impact all of your users. Make sure you have a break-glass account configured.' — you do, continue.",
+      "",
+      "Exclude tab (CRITICAL):",
+      "• Check 'Users and groups'",
+      "• Click the 'Select excluded users and groups' link",
+      "• Add: breakglass@<your-tenant>.onmicrosoft.com (your break-glass account from above)",
+      "• Click Select",
+      "Users pane should now read: Include: All users | Exclude: 1",
+
+      "## Step 4 — Assignments: Target resources",
+      "Click 'Target resources'",
+      "Select what this policy applies to: leave at 'Cloud apps'",
+      "Include tab:",
+      "• Select 'All cloud apps'",
+      "Exclude tab:",
+      "• Leave empty",
+      "(Some orgs exclude specific apps here — like Microsoft Intune Enrollment — but for your lab, All Cloud Apps is correct.)",
+
+      "## Step 5 — Assignments: Conditions",
+      "Click 'Conditions'",
+      "Leave everything here Not configured for this first policy — no conditions means the policy evaluates on EVERY sign-in regardless of location, device, platform, or risk.",
+      "(You'll add conditions in later policies: d32t2 adds location conditions, d33 adds device conditions.)",
+
+      "## Step 6 — Access controls: Grant",
+      "Click 'Grant' (under Access Controls)",
+      "Select 'Grant access'",
+      "Check: 'Require multifactor authentication'",
+      "Leave the other checkboxes unchecked (those come in later policies)",
+      "For multiple controls: leave at 'Require one of the selected controls' (default)",
+      "Click Select",
+
+      "## Step 7 — Access controls: Session",
+      "Leave at default (nothing configured)",
+      "Session controls handle things like 'sign-in frequency' and 'persistent browser session' — later concerns.",
+
+      "## Step 8 — Enable policy: REPORT-ONLY (critical first step)",
+      "At the bottom of the policy form, under 'Enable policy':",
+      "Select 'Report-only'",
+      "(DO NOT select 'On'. Report-only is CA's dry-run mode. It evaluates the policy against real sign-ins and logs what WOULD have happened — but doesn't actually enforce anything. This prevents accidentally locking everyone out with a misconfigured policy.)",
+
+      "## Step 9 — Create the policy",
+      "Click Create at the bottom",
+      "Policy appears in the list with status 'Report-only'",
+
+      "## Step 10 — Wait 24 hours, then review sign-in logs",
+      "Don't enforce yet. Let the policy run in Report-only for 24 hours to see real impact.",
+      "After 24 hours: entra.microsoft.com → Monitoring → Sign-in logs",
+      "Click any sign-in event → 'Conditional Access' tab in the detail pane",
+      "You'll see 'CA001-Require-MFA-AllUsers' listed with a result:",
+      "• 'Would have succeeded' — user DID satisfy MFA, policy would've let them through",
+      "• 'Would have failed' — user did NOT have MFA, policy WOULD have blocked them",
+      "Count the 'Would have failed' events. These users will need MFA guidance before you enforce.",
+
+      "## Step 11 — Switch from Report-only to On (after review period)",
+      "Only after you've confirmed the report-only results are acceptable:",
+      "Protection → Conditional Access → Policies → CA001-Require-MFA-AllUsers → click to edit",
+      "Enable policy: change from 'Report-only' to 'On'",
+      "Save",
+      "Policy is now enforcing.",
+
+      "## Step 12 — Test the enforcement",
+      "Sign out of your admin session → sign back in with a regular test user (not break-glass, not the admin that created the policy)",
+      "You should be prompted to register for MFA: phone number or Authenticator app",
+      "Register, complete sign-in",
+      "From now on, that user will be challenged for MFA on every new session",
+
+      "## If something goes wrong — the break-glass drill",
+      "If you accidentally lock yourself out despite the exclusion:",
+      "Sign in with the breakglass@<tenant>.onmicrosoft.com account",
+      "Edit or delete the problematic CA policy",
+      "Test your normal account again",
+      "After the incident: rotate the break-glass password, document what happened",
+
+      "## Common issues",
+      "• 'This policy impacts every user' warning — expected. That's the point of an 'all users' policy.",
+      "• Sign-in log Conditional Access tab empty — sign-in was before the policy was created, or the policy didn't evaluate for that session type (service principal, legacy auth).",
+      "• Report-only shows 'Failure' but user signs in fine — that IS the report-only working. The user succeeded because the policy isn't enforcing yet.",
+      "• 'Report-only' option missing — your tenant may not support Report-only for some reason; check that you're on Entra P1+ (Business Premium includes it).",
+
+      "## What you learned that you'll reuse",
+      "• The 5-block CA policy structure (Users → Resources → Conditions → Grant → Session) is identical for every policy you build in d32t2, d32t3, d33, d34",
+      "• Report-only BEFORE On is the professional deployment pattern — skip it and you risk tenant-wide lockout",
+      "• Break-glass accounts are the one thing that prevents a bad CA policy from ending your career. Every tenant has one. You just built yours.",
+      "• The sign-in log's Conditional Access tab is THE troubleshooting surface for identity — every 'why can't user X access app Y' question starts there"
     ]},
     {id:"d32t2",text:"Build CA Policy: Block sign-ins from outside the US",cat:"lab",icon:"🌍",time:"~20 min",diff:2,prereq:"d31t2",steps:[
       "## Create",
@@ -1125,19 +1860,130 @@ const DAYS=[
     ]},
   ]},
   {day:34,label:"Authentication Methods",tasks:[
-    {id:"d34t1",text:"Configure authentication methods in Entra",cat:"lab",icon:"🔐",time:"~30 min",diff:2,prereq:"d1t2",steps:[
-      "## Navigate",
-      "entra.microsoft.com → Protection → Authentication methods → Policies",
-      "## Enable methods in order of strength",
-      "Microsoft Authenticator — push notifications with number matching",
-      "FIDO2 security keys — phishing-resistant hardware tokens",
-      "Windows Hello for Business — biometric + TPM",
-      "## Disable/restrict weaker methods",
-      "SMS — disable or restrict to specific groups (vulnerable to SIM swap)",
-      "Voice call — same as SMS",
-      "## Require number matching",
-      "Microsoft Authenticator → configure → Require number matching: Enabled",
-      "Prevents push fatigue attacks (accidental Approve taps)"
+    {id:"d34t1",text:"Configure authentication methods in Entra",cat:"lab",icon:"🔐",time:"~45 min",diff:2,prereq:"d1t2",steps:[
+      "## Why this task now",
+      "d32 required MFA via Conditional Access. But 'MFA' is a category, not a specific method — SMS is MFA, Microsoft Authenticator is MFA, FIDO2 keys are MFA. They're not equally secure. SMS is vulnerable to SIM swap; Authenticator push is vulnerable to fatigue attacks; FIDO2 is phishing-resistant. Configuring which methods your users CAN use determines how strong your MFA actually is.",
+      "This task is also the gateway to d34t2 (Authentication Strengths) which requires specific phishing-resistant methods for admins.",
+      "## Learn context",
+      "SC-300 module 'Plan and implement multifactor authentication' covers strength hierarchy. Key interview knowledge: SMS < Voice Call < Authenticator (notification only) < Authenticator (number matching) < FIDO2 / Windows Hello for Business.",
+
+      "## Step 1 — Navigate to Authentication methods",
+      "https://entra.microsoft.com → Protection (left nav)",
+      "Click 'Authentication methods' under Protection",
+      "Sub-nav appears: Policies, Monitoring, Password protection, Password reset, User registration details, etc.",
+      "Click Policies (default)",
+      "You see a list of every authentication method Entra supports with its current state:",
+      "• FIDO2 security key",
+      "• Microsoft Authenticator",
+      "• SMS",
+      "• Temporary Access Pass",
+      "• Hardware OATH tokens",
+      "• Third-party software OATH tokens",
+      "• Voice call",
+      "• Email OTP",
+      "• Certificate-based authentication",
+      "• Windows Hello for Business (newer UI versions list this separately)",
+      "Official doc: https://learn.microsoft.com/en-us/entra/identity/authentication/concept-authentication-methods",
+
+      "## Step 2 — Enable Microsoft Authenticator (strongest practical method)",
+      "Click 'Microsoft Authenticator' row",
+      "Right-hand panel opens",
+      "",
+      "Enable and Target tab:",
+      "• Enable: Yes",
+      "• Target: include All users",
+      "",
+      "Configure tab (this is where the anti-fatigue settings live):",
+      "• Allow use of Microsoft Authenticator OTP: Enabled",
+      "• Microsoft Authenticator authentication mode: Any (allows push, OTP, or passwordless)",
+      "",
+      "Show application name in push and passwordless notifications:",
+      "• State: Enabled",
+      "• Target: All users",
+      "",
+      "Show geographic location in push and passwordless notifications:",
+      "• State: Enabled",
+      "• Target: All users",
+      "",
+      "Require number matching for push notifications:",
+      "• State: Enabled",
+      "• Target: All users",
+      "(CRITICAL — this is the anti-fatigue control. Without number matching, an attacker spamming MFA prompts can eventually get a user to accidentally tap Approve. With number matching, the user must type the correct number from the sign-in screen.)",
+      "",
+      "Click Save",
+
+      "## Step 3 — Enable FIDO2 (for phishing-resistant MFA, required by d34t2)",
+      "Click FIDO2 security key row",
+      "Enable and Target tab: Enable = Yes, Target = All users",
+      "Configure tab:",
+      "• Allow self-service set up: Yes",
+      "• Enforce attestation: Yes (verifies the key is from a trusted manufacturer)",
+      "• Enforce key restrictions: No (for lab; in production, restrict to YubiKey/Feitian/etc.)",
+      "Save",
+      "(Note: You don't need an actual FIDO2 key today. Enabling the method is what allows your admins — in d34t2 — to require it for high-privilege roles.)",
+
+      "## Step 4 — Enable Windows Hello for Business (if not already)",
+      "Click Windows Hello for Business row (or 'Passkey (Windows Hello)' in newer UIs)",
+      "Enable: Yes, Target: All users",
+      "Save",
+      "(WHfB is biometric + TPM — phishing-resistant like FIDO2. On Entra-joined Windows devices it's often enabled by default.)",
+
+      "## Step 5 — Restrict SMS (keep enabled as fallback, but target narrowly)",
+      "Click SMS row",
+      "Enable: Yes",
+      "Target tab: change from All users to a specific group (e.g., SG-LegalSMS, or specific users who can't use Authenticator)",
+      "(The professional pattern is: don't disable SMS entirely (lockout risk for users without smartphones), but restrict it so most users default to Authenticator.)",
+      "Save",
+
+      "## Step 6 — Disable or restrict Voice call",
+      "Same pattern as SMS — click → Enable: Yes → Target: empty group or specific exceptions only",
+      "Voice call is as weak as SMS and has even fewer legitimate use cases.",
+
+      "## Step 7 — Disable Email OTP (if enabled)",
+      "Click Email OTP row",
+      "Enable: No",
+      "Save",
+      "(Email OTP = 'your code is X, sent to your email'. Fine for guest sign-ins but not for primary MFA. Default should be disabled for your own users.)",
+
+      "## Step 8 — Configure Temporary Access Pass (powerful onboarding tool)",
+      "Click Temporary Access Pass row",
+      "Enable: Yes",
+      "Target: All users (or a specific admin group that can issue TAPs)",
+      "Configure tab:",
+      "• Minimum lifetime: 1 hour",
+      "• Maximum lifetime: 8 hours",
+      "• Default lifetime: 1 hour",
+      "• One-time use: Required (best practice)",
+      "• Length: 8 digits",
+      "Save",
+      "(TAP lets admins issue a time-limited code for users to onboard MFA without a password reset. Huge unlock for helpdesk scenarios.)",
+
+      "## Step 9 — Audit — the Authentication methods activity report",
+      "Left nav under Authentication methods: Monitoring → User registration details",
+      "Shows every user and which methods they've registered",
+      "Filter by 'Method registered' = 'None' to find users without any MFA registered — those are your risk accounts",
+      "Export to CSV for record-keeping",
+
+      "## Step 10 — Register MFA for a test user",
+      "Sign out of admin → sign in as one of your d3 test users in InPrivate browser",
+      "If your d32 CA policy is enforcing, MFA registration is triggered",
+      "On the prompt: choose Microsoft Authenticator app",
+      "• Download Microsoft Authenticator on phone (if not installed)",
+      "• Scan the QR code on screen",
+      "• Complete a test sign-in with number matching",
+      "Back in admin session: Users → the test user → Authentication methods tab → should show Microsoft Authenticator listed",
+
+      "## Common issues",
+      "• Changes don't apply to users — Authentication methods policies can take up to 1 hour to propagate. Force a new sign-in to re-evaluate.",
+      "• 'Your organization requires additional security info' loop — Combined Registration is disabled. Go to entra.microsoft.com → Overview → Properties → 'Security defaults' and 'User settings' → Enable Combined Registration.",
+      "• User can't register FIDO2 despite being enabled — FIDO2 requires a compatible browser (Edge, Chrome) and HTTPS context. Test at aka.ms/mysecurityinfo.",
+      "• Number matching not showing — user's Authenticator app is outdated. Update the app to the latest version from the App Store / Play Store.",
+
+      "## What you learned that you'll reuse",
+      "• Authentication methods policies = WHICH methods are allowed. CA policies = WHEN to require MFA (using whatever allowed methods).",
+      "• Number matching is the single most important setting to enable — it defeats push fatigue attacks.",
+      "• The strength hierarchy: SMS/Voice (weakest) < Authenticator notification < Authenticator with number matching < FIDO2 / Windows Hello for Business (phishing-resistant)",
+      "• Temporary Access Pass is the helpdesk's modern password-reset replacement — memorize this for interviews"
     ]},
     {id:"d34t2",text:"Create an Authentication Strengths policy",cat:"lab",icon:"💪",time:"~20 min",diff:3,prereq:"d34t1",steps:[
       "## Open",
@@ -1387,18 +2233,145 @@ const DAYS=[
     ]},
   ]},
   {day:42,label:"Incident Response Drill",tasks:[
-    {id:"d42t1",text:"Simulate a compromised account response",cat:"lab",icon:"🚒",time:"~45 min",diff:3,prereq:"d41t1",steps:[
-      "## Scenario",
-      "A test user reports their account was phished — credentials were entered on a fake login page",
-      "## Response actions (execute each)",
-      "1. Revoke all active sessions: entra.microsoft.com → Users → user → 'Revoke sessions'",
-      "2. Reset password: Users → user → 'Reset password'",
-      "3. Require MFA re-registration: Users → user → Authentication methods → 'Require re-register MFA'",
-      "4. Check sign-in logs for anomalous activity from the compromised account",
-      "5. Check audit logs for any admin actions performed by that user",
-      "## Document the runbook",
-      "Write each step as a numbered playbook — save as 'compromised-account-runbook.md'",
-      "This is an interview-ready artifact"
+    {id:"d42t1",text:"Simulate a compromised account response",cat:"lab",icon:"🚒",time:"~75 min",diff:3,prereq:"d41t1",steps:[
+      "## Why this task now",
+      "Compromised account response is the single most-asked scenario question in identity security interviews. 'A user calls and says their account was phished — what do you do?' You need this flow cold, including the ORDER of actions (containment first, investigation second — not the other way around).",
+      "The runbook you produce today goes into your portfolio (Day 47) and is referenced in the Day 55 mock interview.",
+      "## Learn context",
+      "This drill synthesizes SC-300 content from paths 'Implement an Authentication and Access Management solution' and 'Plan and implement an identity governance strategy'. No new concepts — you're applying what you've studied under time pressure.",
+
+      "## The scenario (act this out as if it's real)",
+      "11:47 AM: A test user calls the IT helpdesk. 'I clicked a link in an email that said my mailbox was full. It took me to what looked like a Microsoft sign-in page. I entered my password. Then nothing happened and I closed the window. Now I'm worried.'",
+      "You are the on-call identity engineer. Go.",
+
+      "## The NIST IR phases (frame your thinking)",
+      "1. CONTAIN — stop the attacker's access immediately",
+      "2. ERADICATE — remove attacker persistence (malicious forwarding rules, app consents, inbox rules, added devices)",
+      "3. INVESTIGATE — what did the attacker do before you cut them off?",
+      "4. RECOVER — safely restore user access",
+      "5. POST-INCIDENT — lessons learned, close gaps",
+      "Order matters. Interviewers listen for 'contain first' — juniors investigate first and let the attacker stay in.",
+
+      "## Phase 1: CONTAIN (do these in parallel, fast)",
+      "",
+      "Action 1.1 — Revoke all active sessions",
+      "• entra.microsoft.com → Users → select the compromised user",
+      "• Overview tab → top bar → click 'Revoke sessions'",
+      "• Confirm",
+      "• WHAT THIS DOES: invalidates every refresh token the user has. Any stolen session cookies become worthless. Attacker sitting in OWA? Kicked out.",
+      "• Cmdlet equivalent: Revoke-MgUserSignInSession -UserId <userId>",
+      "",
+      "Action 1.2 — Disable the account temporarily",
+      "• Same user page → Overview → click 'Disable account' (cloud icon with slash)",
+      "• Confirm",
+      "• WHAT THIS DOES: blocks new sign-ins entirely. Attacker can't get back in even with credentials.",
+      "• (You'll re-enable after password reset — this is a holding measure.)",
+      "",
+      "Action 1.3 — Reset the password to a strong random value",
+      "• Same user page → top bar → 'Reset password'",
+      "• Generate a new temporary password (or let Entra auto-generate)",
+      "• DO NOT share with the user yet — first you'll investigate and eradicate",
+
+      "## Phase 2: ERADICATE (remove persistence)",
+      "",
+      "Action 2.1 — Check for malicious inbox rules in Exchange",
+      "• admin.microsoft.com → Exchange admin center → Mail flow → or go direct to https://admin.exchange.microsoft.com",
+      "• Recipients → Mailboxes → find the compromised user",
+      "• Mailbox settings → Rules",
+      "• Common attacker rules to look for: auto-forward to external domain, delete-on-arrival for specific senders (to hide attacker replies), move-to-Archive for messages containing 'password' or 'invoice'",
+      "• Delete any suspicious rules",
+      "• PowerShell equivalent: Get-InboxRule -Mailbox <user>",
+      "",
+      "Action 2.2 — Check for unauthorized app consents",
+      "• entra.microsoft.com → Applications → Enterprise applications → 'User assignment required? = any'",
+      "• Filter by user: your compromised user",
+      "• Or: entra.microsoft.com → Users → user → Applications",
+      "• Attacker pattern: consent-grant phishing — trick user into granting a malicious OAuth app access to mail",
+      "• Review each app. Anything unfamiliar → revoke consent.",
+      "• Detailed doc: https://learn.microsoft.com/en-us/defender-office-365/detect-and-remediate-illicit-consent-grants",
+      "",
+      "Action 2.3 — Check for added devices",
+      "• entra.microsoft.com → Users → user → Devices",
+      "• Unfamiliar devices registered under this user = attacker enrolled their own device to bypass MFA",
+      "• Disable or delete any suspicious devices",
+      "",
+      "Action 2.4 — Check for added authentication methods",
+      "• Users → user → Authentication methods",
+      "• Attacker pattern: attacker registers their own phone number or Authenticator app as a secondary MFA method",
+      "• Delete any methods the user doesn't recognize",
+      "• Click 'Require re-register multifactor authentication' at top",
+
+      "## Phase 3: INVESTIGATE (what did they do?)",
+      "",
+      "Action 3.1 — Sign-in logs for the compromised user",
+      "• entra.microsoft.com → Monitoring → Sign-in logs",
+      "• Filter: User = compromised user, Date = last 24 hours",
+      "• For each sign-in: check Location (is it from expected geography?), IP address, Device (unfamiliar = compromise indicator), Application accessed",
+      "• Flag every sign-in from an unfamiliar location/IP — that was the attacker",
+      "• Document time range of attacker activity",
+      "",
+      "Action 3.2 — Audit logs for admin actions",
+      "• entra.microsoft.com → Monitoring → Audit logs",
+      "• Filter: Initiated by (actor) = compromised user, Date = last 24 hours",
+      "• Look for: role assignments, password resets, group additions, app consents, device joins",
+      "• Any of these = attacker attempted escalation. Document and revert each.",
+      "",
+      "Action 3.3 — Check for mailbox exfiltration",
+      "• Exchange admin center → Reports → Mail flow",
+      "• Or: Defender XDR (security.microsoft.com) → Explorer → search by user",
+      "• Look for unusual outbound volume, large attachments sent externally, emails to unknown domains",
+      "",
+      "Action 3.4 — Check for data access in SharePoint/OneDrive",
+      "• admin.microsoft.com → SharePoint admin → site → activity",
+      "• Or: Purview audit log search (if available)",
+      "• Unusual file downloads from this user's account during the attacker window = data exfiltration",
+
+      "## Phase 4: RECOVER",
+      "",
+      "Action 4.1 — Re-enable the user account",
+      "• entra.microsoft.com → Users → user → Enable account",
+      "",
+      "Action 4.2 — Deliver the new temporary password out-of-band",
+      "• Call the user directly (not via the compromised email)",
+      "• Or use a Temporary Access Pass (d34t1 Step 8): Users → user → Authentication methods → + Add authentication method → Temporary Access Pass",
+      "• Issue a 1-hour TAP; user uses it to sign in and register new MFA methods",
+      "",
+      "Action 4.3 — Force new MFA registration",
+      "• Already triggered in Action 2.4. User must re-register Authenticator on next sign-in.",
+
+      "## Phase 5: POST-INCIDENT",
+      "",
+      "Action 5.1 — Write the incident note",
+      "• What happened, what was done, timeline, affected scope",
+      "• Save to your incident log",
+      "",
+      "Action 5.2 — Identify gaps",
+      "• Did your CA policies catch this? (Phishing sign-in from a new location should have triggered MFA. If it didn't, why?)",
+      "• Did Identity Protection flag it as risky? (If not, check your risk policies.)",
+      "• Is there a CA policy tightening that would prevent repeat?",
+
+      "## Step — Write the runbook document",
+      "Open any markdown editor (VS Code, Typora, or Notepad)",
+      "Create 'compromised-account-runbook.md' in your IntuneScripts folder (git-tracked)",
+      "Include: the 5 phases above, specific click paths for each action, PowerShell equivalents",
+      "Add a one-page 'quick card' at top — the 'under 5 minute containment' checklist",
+      "This is a PORTFOLIO ARTIFACT — include it on LinkedIn Featured (Day 47) and attach to applications",
+
+      "## Practice the 60-second verbal summary",
+      "'If a user reports suspicious account activity: First, revoke sessions and disable the account to contain. Second, check inbox rules, app consents, added devices, and added MFA methods for persistence — remove anything unauthorized. Third, review sign-in logs and audit logs to understand what the attacker did while they had access. Fourth, reset the password, deliver out-of-band, and re-enable. Fifth, close the gaps — what policy should have caught this?'",
+      "Rehearse this until it's under 60 seconds and comes out cleanly.",
+
+      "## Common issues",
+      "• 'Revoke sessions' button disabled — user not selected or you don't have User Administrator role",
+      "• Can't find inbox rules in Exchange admin — make sure you're in the user's mailbox settings, not tenant-wide mail flow rules (different object)",
+      "• 'Add authentication method' TAP option missing — Temporary Access Pass isn't enabled tenant-wide. Revisit d34t1 Step 8.",
+      "• Unified audit log returns nothing — it may not be enabled on older tenants. admin.exchange.microsoft.com → Search & investigation → Audit log search → 'Start recording user and admin activities'",
+
+      "## What you learned that you'll reuse",
+      "• Contain → Eradicate → Investigate → Recover → Post-incident — the 5 phases map to NIST IR and work for almost any security incident",
+      "• Session revocation is the single most impactful containment action — stolen tokens become useless",
+      "• Persistence-check checklist (inbox rules + OAuth grants + devices + auth methods) — memorize this for interviews",
+      "• This task's runbook is the interview artifact — hiring managers asked 'show me something you built' will love it"
     ]},
     {id:"d42t2",text:"Practice the incident response narrative",cat:"interview",icon:"🎤",time:"~20 min",diff:2,prereq:"d42t1",steps:[
       "## The question",
@@ -1862,15 +2835,46 @@ function App(){
   const[completed,setCompleted]=useState(()=>LS.get("se-done")||{});
   const[habitLog,setHabitLog]=useState(()=>LS.get("se-hab")||{});
   const[startDate,setStartDate]=useState(()=>LS.get("se-start"));
+  const[labRef,setLabRef]=useState(()=>LS.get("se-ref")||{tenantId:"",tenantDomain:"",adminUpn:"",recoveryUsb:""});
   const[selectedDay,setSelectedDay]=useState(null);
   const[view,setView]=useState("today");
   const[expandedTask,setExpandedTask]=useState(null);
+  const[expandedHabit,setExpandedHabit]=useState(null);
+  const[showRef,setShowRef]=useState(false);
+  const[showSync,setShowSync]=useState(false);
 
   const toggle=useCallback(id=>{setCompleted(p=>{const n={...p,[id]:!p[id]};LS.set("se-done",n);return n;});},[]);
   const todayKey=new Date().toISOString().slice(0,10);
   const toggleHabit=useCallback(id=>{setHabitLog(p=>{const dh=p[todayKey]||{};const n={...p,[todayKey]:{...dh,[id]:!dh[id]}};LS.set("se-hab",n);return n;});},[todayKey]);
   const start=useCallback(()=>{setStartDate(todayKey);LS.set("se-start",todayKey);},[todayKey]);
   const reset=useCallback(()=>{if(!confirm("Reset all progress? This cannot be undone."))return;setCompleted({});setHabitLog({});setStartDate(null);setView("today");LS.del("se-done");LS.del("se-hab");LS.del("se-start");},[]);
+
+  const updateRef=useCallback((field,value)=>{setLabRef(p=>{const n={...p,[field]:value};LS.set("se-ref",n);return n;});},[]);
+
+  const exportProgress=useCallback(()=>{
+    const data={version:1,exported:new Date().toISOString(),completed,habitLog,startDate,labRef};
+    const json=JSON.stringify(data,null,2);
+    navigator.clipboard.writeText(json).then(()=>{
+      alert("Progress copied to clipboard. On your other device: open this same site → Phases → Import Progress → paste.");
+    }).catch(()=>{
+      prompt("Copy this text and paste it on your other device:",json);
+    });
+  },[completed,habitLog,startDate,labRef]);
+
+  const importProgress=useCallback(()=>{
+    const json=prompt("Paste the progress JSON from your other device:");
+    if(!json)return;
+    try{
+      const data=JSON.parse(json);
+      if(!data.completed||typeof data.completed!=="object")throw new Error("Invalid format");
+      if(!confirm(`Import progress from ${data.exported||"unknown date"}? This will OVERWRITE your current progress on this device.`))return;
+      setCompleted(data.completed||{});LS.set("se-done",data.completed||{});
+      setHabitLog(data.habitLog||{});LS.set("se-hab",data.habitLog||{});
+      if(data.startDate){setStartDate(data.startDate);LS.set("se-start",data.startDate);}
+      if(data.labRef){setLabRef(data.labRef);LS.set("se-ref",data.labRef);}
+      alert("Imported successfully.");
+    }catch(e){alert("Could not parse that JSON. Make sure you copied the full export.");}
+  },[]);
 
   const dayNum=startDate?Math.max(1,Math.ceil((Date.now()-new Date(startDate+"T00:00:00").getTime())/86400000)):0;
   const totalTasks=DAYS.reduce((s,d)=>s+d.tasks.length,0);
@@ -2076,6 +3080,60 @@ function App(){
 
           return(
             <>
+              {/* Today navigation bar (prev/today/next) */}
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
+                <button onClick={()=>{setSelectedDay(Math.max(1,td.day-1));setView("day");setExpandedTask(null);}} disabled={td.day<=1} style={{
+                  padding:"8px 12px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,
+                  color:td.day<=1?"#334155":"#94A3B8",cursor:td.day<=1?"default":"pointer",fontFamily:m,fontSize:12,fontWeight:600,flex:1
+                }}>← Day {Math.max(1,td.day-1)}</button>
+                <div style={{padding:"8px 14px",background:"#06B6D415",border:"1px solid #06B6D440",borderRadius:8,color:"#06B6D4",fontFamily:m,fontSize:12,fontWeight:700,letterSpacing:0.5}}>TODAY</div>
+                <button onClick={()=>{setSelectedDay(Math.min(60,td.day+1));setView("day");setExpandedTask(null);}} disabled={td.day>=60} style={{
+                  padding:"8px 12px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,
+                  color:td.day>=60?"#334155":"#94A3B8",cursor:td.day>=60?"default":"pointer",fontFamily:m,fontSize:12,fontWeight:600,flex:1
+                }}>Day {Math.min(60,td.day+1)} →</button>
+              </div>
+
+              {/* Lab Reference card (collapsible) */}
+              <div style={{marginBottom:18}}>
+                <button onClick={()=>setShowRef(!showRef)} style={{
+                  width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",
+                  padding:"10px 14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:showRef?"10px 10px 0 0":"10px",
+                  color:"#94A3B8",cursor:"pointer",fontFamily:m,fontSize:11,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase"
+                }}>
+                  <span>🧰 Lab Reference</span>
+                  <span>{showRef?"▲":"▼"}</span>
+                </button>
+                {showRef&&(
+                  <div style={{background:"#0D1525",border:"1px solid #1E293B",borderTop:"none",borderRadius:"0 0 10px 10px",padding:"12px 14px"}}>
+                    <div style={{fontSize:11,color:"#64748B",marginBottom:10,lineHeight:1.5}}>
+                      Stored only on this device. Not in the source code. Safe for identifiers, not passwords or recovery keys.
+                    </div>
+                    {[
+                      {k:"tenantDomain",l:"Tenant domain",ph:"smokkelabs.onmicrosoft.com"},
+                      {k:"tenantId",l:"Tenant ID (GUID)",ph:"1a2b3c4d-5678-90ab-cdef-1234567890ab"},
+                      {k:"adminUpn",l:"Admin UPN",ph:"admin@smokkelabs.onmicrosoft.com"},
+                      {k:"recoveryUsb",l:"W11 Rebuild USB location",ph:"Desk drawer, labeled"}
+                    ].map(f=>(
+                      <div key={f.k} style={{marginBottom:9}}>
+                        <div style={{fontSize:10,fontFamily:m,color:"#64748B",letterSpacing:1,textTransform:"uppercase",marginBottom:3,fontWeight:600}}>{f.l}</div>
+                        <div style={{display:"flex",gap:6}}>
+                          <input type="text" value={labRef[f.k]||""} onChange={e=>updateRef(f.k,e.target.value)} placeholder={f.ph} style={{
+                            flex:1,padding:"7px 10px",background:"#0B1120",border:"1px solid #1E293B",borderRadius:6,
+                            color:"#E5E7EB",fontFamily:m,fontSize:12.5,outline:"none"
+                          }}/>
+                          {labRef[f.k]&&(
+                            <button onClick={()=>{navigator.clipboard.writeText(labRef[f.k]).then(()=>{}).catch(()=>{});}} title="Copy to clipboard" style={{
+                              padding:"7px 10px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:6,
+                              color:"#06B6D4",fontFamily:m,fontSize:11,cursor:"pointer",fontWeight:600
+                            }}>📋</button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
               {/* Start here callout for day 1 */}
               {isDay1NothingDone&&(
                 <div style={{
@@ -2087,7 +3145,7 @@ function App(){
                   <span style={{fontSize:26,flexShrink:0}}>👋</span>
                   <div>
                     <div style={{fontSize:13,fontWeight:700,color:"#06B6D4",marginBottom:3,letterSpacing:0.3}}>Start here</div>
-                    <div style={{fontSize:12.5,color:"#CBD5E1",lineHeight:1.55}}>Day 1 sets up your M365 tenant and bookmarks the free MS Learn paths. Tap a task to see step-by-step instructions. Check off habits below each day.</div>
+                    <div style={{fontSize:12.5,color:"#CBD5E1",lineHeight:1.55}}>Day 1 sets up your M365 tenant and bookmarks the free MS Learn paths. Tap a task to see step-by-step instructions. Check off habits below — tap a habit to see its guide.</div>
                   </div>
                 </div>
               )}
@@ -2099,17 +3157,43 @@ function App(){
                 </div>
                 {HABITS.map(h=>{
                   const done=todayHabits[h.id];
+                  const isExp=expandedHabit===h.id;
                   return(
-                    <button key={h.id} onClick={()=>toggleHabit(h.id)} style={{
-                      display:"flex",alignItems:"center",gap:12,width:"100%",padding:"13px 14px",
-                      background:done?"rgba(16,185,129,0.08)":"#151D2E",
-                      border:done?"1px solid rgba(16,185,129,0.3)":"1px solid #1E293B",
-                      borderRadius:10,marginBottom:7,cursor:"pointer",textAlign:"left"
-                    }}>
-                      <div style={{width:24,height:24,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",background:done?"#10B981":"transparent",border:done?"none":"2px solid #374151",fontSize:13,color:"#fff",flexShrink:0}}>{done?"✓":""}</div>
-                      <div style={{fontSize:14,color:done?"#10B981":"#D1D5DB",fontWeight:500,textDecoration:done?"line-through":"none",fontFamily:f,flex:1}}>{h.text}</div>
-                      <span style={{fontSize:17,flexShrink:0}}>{h.icon}</span>
-                    </button>
+                    <div key={h.id} style={{marginBottom:7}}>
+                      <div style={{
+                        display:"flex",alignItems:"center",gap:12,padding:"13px 14px",
+                        background:done?"rgba(16,185,129,0.08)":"#151D2E",
+                        border:done?"1px solid rgba(16,185,129,0.3)":"1px solid #1E293B",
+                        borderRadius:isExp?"10px 10px 0 0":"10px"
+                      }}>
+                        <button onClick={e=>{e.stopPropagation();toggleHabit(h.id);}} style={{
+                          width:24,height:24,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",
+                          background:done?"#10B981":"transparent",border:done?"none":"2px solid #374151",
+                          fontSize:13,color:"#fff",flexShrink:0,cursor:"pointer",padding:0
+                        }}>{done?"✓":""}</button>
+                        <button onClick={()=>setExpandedHabit(isExp?null:h.id)} style={{flex:1,minWidth:0,background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0,display:"flex",alignItems:"center",gap:10}}>
+                          <div style={{flex:1,fontSize:14,color:done?"#10B981":"#D1D5DB",fontWeight:500,textDecoration:done?"line-through":"none",fontFamily:f}}>{h.text}</div>
+                          <span style={{fontSize:17,flexShrink:0}}>{h.icon}</span>
+                          {h.guide&&<span style={{fontSize:10,color:"#64748B",fontFamily:m,flexShrink:0}}>{isExp?"▲":"▼"}</span>}
+                        </button>
+                      </div>
+                      {isExp&&h.guide&&(
+                        <div style={{background:"#0D1525",border:"1px solid #1E293B",borderTop:"none",borderRadius:"0 0 10px 10px",padding:"12px 14px 14px"}}>
+                          {h.guide.map((line,i)=>{
+                            if(line.startsWith("## ")){
+                              return(
+                                <div key={i} style={{fontSize:10,fontFamily:m,color:"#10B981",fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginTop:i===0?0:12,marginBottom:5,paddingBottom:3,borderBottom:"1px solid #10B98125"}}>
+                                  {line.slice(3)}
+                                </div>
+                              );
+                            }
+                            return(
+                              <div key={i} style={{fontSize:13,color:"#CBD5E1",lineHeight:1.6,marginBottom:4,fontFamily:f,paddingLeft:line.startsWith("•")?8:0}}>{line}</div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
               </div>
@@ -2283,9 +3367,25 @@ function App(){
                 </div>
               );
             })}
+            <div style={{marginTop:18,padding:"14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:10}}>
+              <div style={{fontSize:11,fontFamily:m,color:"#94A3B8",letterSpacing:1.5,textTransform:"uppercase",marginBottom:8,fontWeight:700}}>🔄 Sync across devices</div>
+              <div style={{fontSize:12,color:"#94A3B8",lineHeight:1.55,marginBottom:12}}>
+                Progress is stored in this browser. To move it to another computer or phone: export here, then paste on the other device.
+              </div>
+              <div style={{display:"flex",gap:8}}>
+                <button onClick={exportProgress} style={{
+                  flex:1,padding:"10px",background:"#06B6D415",border:"1px solid #06B6D440",borderRadius:8,
+                  color:"#06B6D4",fontSize:12,fontFamily:m,cursor:"pointer",fontWeight:700,letterSpacing:0.5
+                }}>📤 Export (copy)</button>
+                <button onClick={importProgress} style={{
+                  flex:1,padding:"10px",background:"#8B5CF615",border:"1px solid #8B5CF640",borderRadius:8,
+                  color:"#8B5CF6",fontSize:12,fontFamily:m,cursor:"pointer",fontWeight:700,letterSpacing:0.5
+                }}>📥 Import (paste)</button>
+              </div>
+            </div>
             <button onClick={reset} style={{
               width:"100%",padding:"11px",background:"transparent",border:"1px solid #EF444422",borderRadius:8,
-              color:"#EF4444",fontSize:11,fontFamily:m,cursor:"pointer",marginTop:18,fontWeight:600,letterSpacing:0.5
+              color:"#EF4444",fontSize:11,fontFamily:m,cursor:"pointer",marginTop:12,fontWeight:600,letterSpacing:0.5
             }}>Reset All Progress</button>
           </>
         )}
