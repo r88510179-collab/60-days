@@ -2829,6 +2829,38 @@ const DAYS=[
   ]},
 ];
 
+// ===== AUTO-LINK URLs IN PROSE =====
+const linkify = (text, accent) => {
+  if (!text || typeof text !== "string") return text;
+  const URL_REGEX = /(https?:\/\/\S+)/g;
+  const parts = text.split(URL_REGEX);
+  return parts.map((part, i) => {
+    // Odd indices are captured URLs (split with a capture group interleaves them)
+    if (i % 2 === 1) {
+      // Strip trailing punctuation that's almost certainly not part of the URL
+      let url = part;
+      let trailing = "";
+      while (url.length > 0 && /[.,;:!?)\]}]/.test(url[url.length - 1])) {
+        trailing = url[url.length - 1] + trailing;
+        url = url.slice(0, -1);
+      }
+      return (
+        <React.Fragment key={i}>
+          <a href={url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{
+            color: accent || "#06B6D4",
+            textDecoration: "underline",
+            textDecorationColor: `${accent || "#06B6D4"}66`,
+            textUnderlineOffset: 2,
+            wordBreak: "break-all"
+          }}>{url}</a>
+          {trailing}
+        </React.Fragment>
+      );
+    }
+    return part;
+  });
+};
+
 // ===== STEP RENDERING HELPERS (new) =====
 const isSectionLine = s => s.startsWith("## ");
 const isBulletLine = s => s.startsWith("•");
@@ -3409,7 +3441,7 @@ function App(){
                 if (g.type === "bullet") {
                   return (
                     <div key={i} style={{ display: "flex", gap: 9, marginBottom: 6, marginLeft: 27, alignItems: "flex-start" }}>
-                      <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, fontFamily: f, flex: 1 }}>{g.text}</span>
+                      <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, fontFamily: f, flex: 1 }}>{linkify(g.text, c.color)}</span>
                     </div>
                   );
                 }
@@ -3420,7 +3452,7 @@ function App(){
                     <span style={{ fontSize: 10, fontFamily: m, color: c.color, fontWeight: 700, flexShrink: 0, marginTop: 4, minWidth: 18, textAlign: "right" }}>
                       {stepNum}.
                     </span>
-                    <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.65, fontFamily: f, wordBreak: "break-word", flex: 1 }}>{g.text}</span>
+                    <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.65, fontFamily: f, wordBreak: "break-word", flex: 1 }}>{linkify(g.text, c.color)}</span>
                   </div>
                 );
               });
@@ -3615,7 +3647,7 @@ function App(){
                               );
                             }
                             return(
-                              <div key={i} style={{fontSize:13,color:"#CBD5E1",lineHeight:1.6,marginBottom:4,fontFamily:f,paddingLeft:line.startsWith("•")?8:0}}>{line}</div>
+                              <div key={i} style={{fontSize:13,color:"#CBD5E1",lineHeight:1.6,marginBottom:4,fontFamily:f,paddingLeft:line.startsWith("•")?8:0}}>{linkify(line, "#10B981")}</div>
                             );
                           })}
                         </div>
