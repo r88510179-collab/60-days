@@ -2829,6 +2829,93 @@ const DAYS=[
   ]},
 ];
 
+// ===== STEP RENDERING HELPERS (new) =====
+const isSectionLine = s => s.startsWith("## ");
+const isBulletLine = s => s.startsWith("•");
+const isCodeStart = s => /^(\$|Connect-|Get-|New-|Set-|Install-|Remove-|foreach|if |while |for |try|catch|\}|\)|gam |Import-|Export-|cd |mkdir |#|@\{|Revoke-)/.test(s);
+const isCodeContinue = s => /^(\s|\}|\))/.test(s);
+
+// Group consecutive code lines that are part of the same logical script
+// (multi-line constructs with open braces/parens stay together; standalone
+// commands stay as their own block — one copy button each).
+const groupSteps = (steps) => {
+  const groups = [];
+  let i = 0;
+  while (i < steps.length) {
+    const s = steps[i];
+    if (isSectionLine(s)) { groups.push({ type: "section", text: s.slice(3) }); i++; continue; }
+    if (isBulletLine(s))  { groups.push({ type: "bullet",  text: s }); i++; continue; }
+    if (isCodeStart(s)) {
+      const lines = [s];
+      let depth = 0;
+      const updateDepth = (line) => {
+        for (const ch of line) {
+          if (ch === "{" || ch === "(") depth++;
+          else if (ch === "}" || ch === ")") depth--;
+        }
+      };
+      updateDepth(s);
+      let j = i + 1;
+      while (j < steps.length && depth > 0) {
+        const next = steps[j];
+        if (isCodeStart(next) || isCodeContinue(next)) {
+          lines.push(next);
+          updateDepth(next);
+          j++;
+        } else break;
+      }
+      groups.push({ type: "code", lines });
+      i = j;
+      continue;
+    }
+    groups.push({ type: "prose", text: s });
+    i++;
+  }
+  return groups;
+};
+
+// Code block component with its own copy button.
+const CodeBlock = ({ lines, accent }) => {
+  const [copied, setCopied] = useState(false);
+  const m = "'JetBrains Mono',monospace";
+  const text = lines.join("\n");
+  const doCopy = () => {
+    const fallback = () => {
+      const el = document.createElement("textarea");
+      el.value = text; el.style.position = "fixed"; el.style.opacity = "0";
+      document.body.appendChild(el); el.select();
+      try { document.execCommand("copy"); } catch (e) {}
+      document.body.removeChild(el);
+    };
+    const after = () => { setCopied(true); setTimeout(() => setCopied(false), 1500); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(after).catch(() => { fallback(); after(); });
+    } else { fallback(); after(); }
+  };
+  return (
+    <div style={{
+      position: "relative", margin: "4px 0 14px 27px",
+      background: "#1a2236", border: "1px solid #2a3450", borderRadius: 7,
+      overflow: "hidden"
+    }}>
+      <button onClick={doCopy} style={{
+        position: "absolute", top: 6, right: 6, zIndex: 2,
+        padding: "4px 9px",
+        background: copied ? "#10B98120" : "#0B1120E5",
+        border: `1px solid ${copied ? "#10B98155" : "#334155"}`,
+        borderRadius: 5,
+        color: copied ? "#10B981" : (accent || "#06B6D4"),
+        fontFamily: m, fontSize: 9.5, fontWeight: 700, letterSpacing: 0.5, cursor: "pointer"
+      }}>{copied ? "✓ COPIED" : "📋 COPY"}</button>
+      <pre style={{
+        margin: 0, padding: "10px 12px", paddingRight: 64,
+        fontFamily: m, fontSize: 12.5, lineHeight: 1.65,
+        color: "#CBD5E1", overflowX: "auto", whiteSpace: "pre"
+      }}>{text}</pre>
+    </div>
+  );
+};
+
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch{return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
 
 function App(){
@@ -2922,79 +3009,83 @@ function App(){
     );
   };
 
-  const TaskItem=({task,accent})=>{
-    const done=completed[task.id];
-    const c=CAT[task.cat];
-    const isExp=expandedTask===task.id;
-    const stepCount=task.steps?task.steps.filter(s=>!isSection(s)).length:0;
-    const prereqDone=task.prereq?completed[task.prereq]:true;
+  const TaskItem = ({ task, accent }) => {
+    const done = completed[task.id];
+    const c = CAT[task.cat];
+    const isExp = expandedTask === task.id;
+    const stepCount = task.steps ? task.steps.filter(s => !isSectionLine(s) && !isCodeContinue(s)).length : 0;
+    const prereqDone = task.prereq ? completed[task.prereq] : true;
+    const groups = task.steps ? groupSteps(task.steps) : [];
 
-    return(
-      <div style={{marginBottom:8}}>
+    return (
+      <div style={{ marginBottom: 8 }}>
         <div style={{
-          display:"flex",alignItems:"flex-start",gap:11,padding:"13px 14px",
-          background:done?`${c.color}0A`:"#151D2E",
-          border:done?`1px solid ${c.color}30`:`1px solid #1E293B`,
-          borderLeft:done?`3px solid ${c.color}`:`3px solid ${c.color}55`,
-          borderRadius:isExp?"10px 10px 0 0":"10px"
+          display: "flex", alignItems: "flex-start", gap: 11, padding: "13px 14px",
+          background: done ? `${c.color}0A` : "#151D2E",
+          border: done ? `1px solid ${c.color}30` : `1px solid #1E293B`,
+          borderLeft: done ? `3px solid ${c.color}` : `3px solid ${c.color}55`,
+          borderRadius: isExp ? "10px 10px 0 0" : "10px"
         }}>
-          <button onClick={e=>{e.stopPropagation();toggle(task.id);}} style={{
-            width:24,height:24,borderRadius:7,display:"flex",alignItems:"center",justifyContent:"center",
-            background:done?c.color:"transparent",
-            border:done?"none":`2px solid ${c.color}60`,
-            fontSize:13,color:"#fff",flexShrink:0,marginTop:1,cursor:"pointer",padding:0
-          }}>{done?"✓":""}</button>
+          <button onClick={e => { e.stopPropagation(); toggle(task.id); }} style={{
+            width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center",
+            background: done ? c.color : "transparent",
+            border: done ? "none" : `2px solid ${c.color}60`,
+            fontSize: 13, color: "#fff", flexShrink: 0, marginTop: 1, cursor: "pointer", padding: 0
+          }}>{done ? "✓" : ""}</button>
 
-          <button onClick={()=>setExpandedTask(isExp?null:task.id)} style={{flex:1,minWidth:0,background:"none",border:"none",cursor:"pointer",textAlign:"left",padding:0}}>
-            <div style={{display:"flex",alignItems:"flex-start",gap:8}}>
-              {task.icon&&<span style={{fontSize:18,lineHeight:1.3,flexShrink:0}}>{task.icon}</span>}
-              <div style={{flex:1,fontSize:14,color:done?"#64748B":"#E5E7EB",fontWeight:500,textDecoration:done?"line-through":"none",lineHeight:1.45,fontFamily:f}}>{task.text}</div>
+          <button onClick={() => setExpandedTask(isExp ? null : task.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+            <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+              {task.icon && <span style={{ fontSize: 18, lineHeight: 1.3, flexShrink: 0 }}>{task.icon}</span>}
+              <div style={{ flex: 1, fontSize: 14, color: done ? "#64748B" : "#E5E7EB", fontWeight: 500, textDecoration: done ? "line-through" : "none", lineHeight: 1.45, fontFamily: f }}>{task.text}</div>
             </div>
 
-            <div style={{display:"flex",alignItems:"center",flexWrap:"wrap",gap:6,marginTop:8,marginLeft:task.icon?26:0}}>
-              <span style={{padding:"2px 7px",borderRadius:4,fontSize:9,fontFamily:m,letterSpacing:0.5,color:c.color,background:`${c.color}15`,textTransform:"uppercase"}}>{c.label}</span>
-              {task.time&&<span style={{padding:"2px 7px",borderRadius:4,fontSize:9,fontFamily:m,color:"#94A3B8",background:"#1E293B"}}>⏱ {task.time}</span>}
-              {task.diff&&<DiffBadge level={task.diff}/>}
-              {task.prereq&&!prereqDone&&(
-                <span title={`Requires ${task.prereq} complete`} style={{padding:"2px 7px",borderRadius:4,fontSize:9,fontFamily:m,color:"#F59E0B",background:"#F59E0B15",border:"1px solid #F59E0B30"}}>🔒 needs {task.prereq}</span>
+            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 8, marginLeft: task.icon ? 26 : 0 }}>
+              <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, letterSpacing: 0.5, color: c.color, background: `${c.color}15`, textTransform: "uppercase" }}>{c.label}</span>
+              {task.time && <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, color: "#94A3B8", background: "#1E293B" }}>⏱ {task.time}</span>}
+              {task.diff && <DiffBadge level={task.diff} />}
+              {task.prereq && !prereqDone && (
+                <span title={`Requires ${task.prereq} complete`} style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, color: "#F59E0B", background: "#F59E0B15", border: "1px solid #F59E0B30" }}>🔒 needs {task.prereq}</span>
               )}
-              {task.steps&&<span style={{fontSize:10,color:"#64748B",fontFamily:m,marginLeft:"auto"}}>{isExp?"▲ Hide":`▼ ${stepCount} steps`}</span>}
+              {task.steps && <span style={{ fontSize: 10, color: "#64748B", fontFamily: m, marginLeft: "auto" }}>{isExp ? "▲ Hide" : `▼ ${stepCount} steps`}</span>}
             </div>
           </button>
         </div>
 
-        {isExp&&task.steps&&(
-          <div style={{background:"#0D1525",border:"1px solid #1E293B",borderTop:"none",borderRadius:"0 0 10px 10px",padding:"12px 14px 14px"}}>
-            {task.prereq&&(
-              <div style={{fontSize:10,fontFamily:m,color:prereqDone?"#10B981":"#F59E0B",marginBottom:10,padding:"6px 10px",background:prereqDone?"#10B98110":"#F59E0B10",borderRadius:6,border:`1px solid ${prereqDone?"#10B98125":"#F59E0B25"}`}}>
-                {prereqDone?"✓":"🔒"} Prerequisite: {task.prereq} {prereqDone?"complete":"not yet complete"}
+        {isExp && task.steps && (
+          <div style={{ background: "#0D1525", border: "1px solid #1E293B", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "14px 14px 16px" }}>
+            {task.prereq && (
+              <div style={{ fontSize: 10, fontFamily: m, color: prereqDone ? "#10B981" : "#F59E0B", marginBottom: 12, padding: "6px 10px", background: prereqDone ? "#10B98110" : "#F59E0B10", borderRadius: 6, border: `1px solid ${prereqDone ? "#10B98125" : "#F59E0B25"}` }}>
+                {prereqDone ? "✓" : "🔒"} Prerequisite: {task.prereq} {prereqDone ? "complete" : "not yet complete"}
               </div>
             )}
             {(() => {
-              let stepNum=0;
-              return task.steps.map((step,i)=>{
-                if(isSection(step)){
-                  return(
-                    <div key={i} style={{fontSize:10,fontFamily:m,color:c.color,fontWeight:700,letterSpacing:1.5,textTransform:"uppercase",marginTop:i===0?0:14,marginBottom:6,paddingBottom:4,borderBottom:`1px solid ${c.color}25`}}>
-                      {step.slice(3)}
+              let stepNum = 0;
+              return groups.map((g, i) => {
+                if (g.type === "section") {
+                  return (
+                    <div key={i} style={{ fontSize: 10, fontFamily: m, color: c.color, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginTop: i === 0 ? 0 : 18, marginBottom: 8, paddingBottom: 5, borderBottom: `1px solid ${c.color}25` }}>
+                      {g.text}
                     </div>
                   );
                 }
-                const code=isCode(step);
-                const bullet=isBullet(step);
-                if(!code&&!bullet)stepNum++;
-                return(
-                  <div key={i} style={{display:"flex",gap:9,marginBottom:6,alignItems:"flex-start"}}>
-                    <span style={{fontSize:10,fontFamily:m,color:c.color,fontWeight:600,flexShrink:0,marginTop:3,minWidth:18,textAlign:"right"}}>
-                      {code||bullet?"":stepNum+"."}
+                if (g.type === "code") {
+                  return <CodeBlock key={i} lines={g.lines} accent={c.color} />;
+                }
+                if (g.type === "bullet") {
+                  return (
+                    <div key={i} style={{ display: "flex", gap: 9, marginBottom: 6, marginLeft: 27, alignItems: "flex-start" }}>
+                      <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, fontFamily: f, flex: 1 }}>{g.text}</span>
+                    </div>
+                  );
+                }
+                // prose
+                stepNum++;
+                return (
+                  <div key={i} style={{ display: "flex", gap: 9, marginBottom: 10, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 10, fontFamily: m, color: c.color, fontWeight: 700, flexShrink: 0, marginTop: 4, minWidth: 18, textAlign: "right" }}>
+                      {stepNum}.
                     </span>
-                    <span style={{
-                      fontSize:13,color:"#CBD5E1",lineHeight:1.6,
-                      fontFamily:code?m:f,
-                      background:code?"#1a2236":"transparent",
-                      padding:code?"5px 9px":"0",
-                      borderRadius:5,wordBreak:"break-word",flex:1
-                    }}>{step}</span>
+                    <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.65, fontFamily: f, wordBreak: "break-word", flex: 1 }}>{g.text}</span>
                   </div>
                 );
               });
