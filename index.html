@@ -2916,7 +2916,324 @@ const CodeBlock = ({ lines, accent }) => {
   );
 };
 
+// ===== GITHUB GIST SYNC =====
+const GIST_FILE = "sprint-progress.json";
+const GIST_DESCRIPTION = "Security Engineering Sprint — progress (private)";
+const SYNC_DEBOUNCE_MS = 2500;
+
+const gistFetch = async (token, path, opts = {}) => {
+  const res = await fetch(`https://api.github.com${path}`, {
+    ...opts,
+    headers: {
+      "Authorization": `Bearer ${token}`,
+      "Accept": "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      "Content-Type": "application/json",
+      ...(opts.headers || {})
+    }
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`GitHub ${res.status}: ${text.slice(0, 140) || res.statusText}`);
+  }
+  return res.json();
+};
+
+const gistAPI = {
+  validateToken: (token) => gistFetch(token, "/user"),
+  create: (token, content) => gistFetch(token, "/gists", {
+    method: "POST",
+    body: JSON.stringify({
+      description: GIST_DESCRIPTION,
+      public: false,
+      files: { [GIST_FILE]: { content } }
+    })
+  }),
+  read: async (token, gistId) => {
+    const data = await gistFetch(token, `/gists/${gistId}`);
+    const file = data.files?.[GIST_FILE];
+    if (!file) throw new Error(`Gist found but missing file '${GIST_FILE}'`);
+    return { content: file.content, updatedAt: data.updated_at, gistId: data.id };
+  },
+  update: (token, gistId, content) => gistFetch(token, `/gists/${gistId}`, {
+    method: "PATCH",
+    body: JSON.stringify({ files: { [GIST_FILE]: { content } } })
+  })
+};
+
+const buildSnapshot = (data) => JSON.stringify({
+  version: 1,
+  lastModified: new Date().toISOString(),
+  completed: data.completed || {},
+  habitLog: data.habitLog || {},
+  startDate: data.startDate || null,
+  labRef: data.labRef || { tenantId: "", tenantDomain: "", adminUpn: "", recoveryUsb: "" }
+}, null, 2);
+
+const parseSnapshot = (content) => {
+  const data = JSON.parse(content);
+  return {
+    completed: data.completed || {},
+    habitLog: data.habitLog || {},
+    startDate: data.startDate || null,
+    labRef: data.labRef || { tenantId: "", tenantDomain: "", adminUpn: "", recoveryUsb: "" }
+  };
+};
+
+const snapshotKey = (s) => JSON.stringify({
+  c: s.completed, h: s.habitLog, s: s.startDate, l: s.labRef
+});
+
+const fmtRelative = (iso) => {
+  if (!iso) return "never";
+  const diff = Date.now() - new Date(iso).getTime();
+  if (diff < 60000) return "just now";
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return `${Math.floor(diff / 86400000)}d ago`;
+};
+
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch{return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
+
+function useGistSync({ snapshot, applyRemote }) {
+  const [cfg, setCfg] = useState(() => LS.get("se-sync") || null);
+  const [status, setStatus] = useState({ state: "idle", lastSync: null, error: null });
+  const [hydrated, setHydrated] = useState(false);
+  const debounceRef = React.useRef(null);
+  const lastSentKeyRef = React.useRef(null);
+
+  const updateCfg = useCallback((next) => {
+    if (next) LS.set("se-sync", next); else LS.del("se-sync");
+    setCfg(next);
+    if (!next) { setHydrated(false); lastSentKeyRef.current = null; }
+  }, []);
+
+  // Pull on mount / cfg change
+  useEffect(() => {
+    if (!cfg?.enabled || !cfg?.token || !cfg?.gistId) { setHydrated(false); return; }
+    let cancelled = false;
+    (async () => {
+      setStatus({ state: "syncing", lastSync: null, error: null });
+      try {
+        const { content } = await gistAPI.read(cfg.token, cfg.gistId);
+        if (cancelled) return;
+        const remote = parseSnapshot(content);
+        applyRemote(remote);
+        lastSentKeyRef.current = snapshotKey(remote);
+        setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+        setHydrated(true);
+      } catch (e) {
+        if (!cancelled) setStatus({ state: "error", lastSync: null, error: e.message });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [cfg?.enabled, cfg?.gistId, cfg?.token, applyRemote]);
+
+  // Push debounced
+  useEffect(() => {
+    if (!cfg?.enabled || !hydrated) return;
+    const key = snapshotKey(snapshot);
+    if (key === lastSentKeyRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setStatus(s => ({ ...s, state: "syncing", error: null }));
+      try {
+        await gistAPI.update(cfg.token, cfg.gistId, buildSnapshot(snapshot));
+        lastSentKeyRef.current = key;
+        setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+      } catch (e) {
+        setStatus({ state: "error", error: e.message });
+      }
+    }, SYNC_DEBOUNCE_MS);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [snapshot, cfg, hydrated]);
+
+  const syncNow = useCallback(async () => {
+    if (!cfg?.enabled) return;
+    setStatus({ state: "syncing", error: null });
+    try {
+      await gistAPI.update(cfg.token, cfg.gistId, buildSnapshot(snapshot));
+      const { content } = await gistAPI.read(cfg.token, cfg.gistId);
+      const remote = parseSnapshot(content);
+      applyRemote(remote);
+      lastSentKeyRef.current = snapshotKey(remote);
+      setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+    } catch (e) {
+      setStatus({ state: "error", error: e.message });
+    }
+  }, [cfg, snapshot, applyRemote]);
+
+  return { cfg, updateCfg, status, syncNow, hydrated };
+}
+
+function SyncBadge({ status, cfg, onClick }) {
+  if (!cfg?.enabled) return null;
+  const m = "'JetBrains Mono',monospace";
+  const colors = { idle: "#10B981", syncing: "#06B6D4", error: "#EF4444" };
+  const labels = {
+    idle: status.lastSync ? `Synced ${fmtRelative(status.lastSync)}` : "Synced",
+    syncing: "Syncing...",
+    error: "Sync error"
+  };
+  const color = colors[status.state] || "#94A3B8";
+  return (
+    <button onClick={onClick} title={status.error || ""} style={{
+      display: "inline-flex", alignItems: "center", gap: 5,
+      padding: "3px 8px", borderRadius: 5, marginTop: 6,
+      background: `${color}15`, border: `1px solid ${color}30`,
+      fontFamily: m, fontSize: 9.5, color, fontWeight: 600, cursor: "pointer"
+    }}>
+      <span style={{ width: 6, height: 6, borderRadius: 3, background: color,
+        animation: status.state === "syncing" ? "pulse 1s infinite" : "none" }}/>
+      {labels[status.state]}
+    </button>
+  );
+}
+
+function SyncSetupModal({ snapshot, onClose, onSetup }) {
+  const [step, setStep] = useState("intro");
+  const [token, setToken] = useState("");
+  const [gistId, setGistId] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState(null);
+  const [createdId, setCreatedId] = useState(null);
+  const m = "'JetBrains Mono',monospace";
+  const f = "'Outfit',sans-serif";
+
+  const createNew = async () => {
+    setBusy(true); setError(null);
+    try {
+      await gistAPI.validateToken(token.trim());
+      const gist = await gistAPI.create(token.trim(), buildSnapshot(snapshot));
+      setCreatedId(gist.id);
+      onSetup({ token: token.trim(), gistId: gist.id, enabled: true });
+      setStep("done-new");
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+
+  const useExisting = async () => {
+    setBusy(true); setError(null);
+    try {
+      await gistAPI.validateToken(token.trim());
+      const { content } = await gistAPI.read(token.trim(), gistId.trim());
+      parseSnapshot(content); // validate
+      onSetup({ token: token.trim(), gistId: gistId.trim(), enabled: true });
+      setStep("done-existing");
+    } catch (e) { setError(e.message); } finally { setBusy(false); }
+  };
+
+  const overlay = {
+    position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100,
+    display: "flex", alignItems: "center", justifyContent: "center", padding: 16
+  };
+  const modal = {
+    background: "#0D1525", border: "1px solid #1E293B", borderRadius: 12,
+    padding: 22, maxWidth: 460, width: "100%", maxHeight: "92dvh", overflowY: "auto",
+    fontFamily: f, color: "#E5E7EB"
+  };
+  const input = {
+    width: "100%", padding: "10px 12px", background: "#0B1120",
+    border: "1px solid #1E293B", borderRadius: 7, color: "#E5E7EB",
+    fontFamily: m, fontSize: 12.5, outline: "none", marginBottom: 10, boxSizing: "border-box"
+  };
+  const btn = (color, primary) => ({
+    padding: "10px 14px", borderRadius: 8, fontFamily: m, fontSize: 11.5, fontWeight: 700,
+    cursor: "pointer", letterSpacing: 0.5,
+    background: primary ? color : "transparent",
+    color: primary ? "#0B1120" : color,
+    border: primary ? "none" : `1px solid ${color}50`
+  });
+
+  return (
+    <div style={overlay} onClick={onClose}>
+      <div style={modal} onClick={e => e.stopPropagation()}>
+        <div style={{ fontSize: 10, fontFamily: m, color: "#06B6D4", letterSpacing: 2, fontWeight: 700, marginBottom: 6 }}>CLOUD SYNC SETUP</div>
+        <h3 style={{ fontSize: 18, fontWeight: 800, marginBottom: 12, letterSpacing: -0.2 }}>
+          {step === "intro" && "Connect to GitHub Gist"}
+          {step === "new" && "Create new sync"}
+          {step === "existing" && "Connect to existing sync"}
+          {step === "done-new" && "✅ Sync created"}
+          {step === "done-existing" && "✅ Connected"}
+        </h3>
+
+        {step === "intro" && (
+          <>
+            <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6, marginBottom: 14 }}>
+              Progress will sync automatically across devices via a <strong style={{ color: "#E5E7EB" }}>private GitHub Gist</strong>. Free, encrypted in transit, only you can read it.
+            </p>
+            <p style={{ fontSize: 12.5, color: "#CBD5E1", marginBottom: 8, fontWeight: 600 }}>Have you already set up sync on another device?</p>
+            <div style={{ display: "flex", gap: 8, flexDirection: "column" }}>
+              <button onClick={() => setStep("new")} style={btn("#06B6D4", true)}>📝 No — set up for the first time</button>
+              <button onClick={() => setStep("existing")} style={btn("#8B5CF6", true)}>🔗 Yes — connect this device to existing sync</button>
+              <button onClick={onClose} style={btn("#64748B")}>Cancel</button>
+            </div>
+          </>
+        )}
+
+        {step === "new" && (
+          <>
+            <p style={{ fontSize: 12.5, color: "#94A3B8", lineHeight: 1.6, marginBottom: 12 }}>
+              Paste your GitHub PAT (with <code style={{ color: "#06B6D4", fontFamily: m, fontSize: 11.5 }}>gist</code> scope). This stays on your device only.
+            </p>
+            <input style={input} type="password" placeholder="ghp_..." value={token} onChange={e => setToken(e.target.value)} />
+            {error && <div style={{ color: "#EF4444", fontSize: 11.5, fontFamily: m, marginBottom: 10, padding: "6px 10px", background: "#EF444415", borderRadius: 6 }}>{error}</div>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={createNew} disabled={!token || busy} style={{ ...btn("#10B981", true), opacity: (!token || busy) ? 0.5 : 1, flex: 1 }}>
+                {busy ? "Creating..." : "Create sync gist"}
+              </button>
+              <button onClick={() => setStep("intro")} style={btn("#64748B")}>Back</button>
+            </div>
+          </>
+        )}
+
+        {step === "existing" && (
+          <>
+            <p style={{ fontSize: 12.5, color: "#94A3B8", lineHeight: 1.6, marginBottom: 12 }}>
+              Paste the same GitHub PAT (or another with <code style={{ color: "#06B6D4", fontFamily: m, fontSize: 11.5 }}>gist</code> scope) plus the Gist ID from your other device.
+            </p>
+            <div style={{ fontSize: 10, fontFamily: m, color: "#64748B", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>GITHUB PAT</div>
+            <input style={input} type="password" placeholder="ghp_..." value={token} onChange={e => setToken(e.target.value)} />
+            <div style={{ fontSize: 10, fontFamily: m, color: "#64748B", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>GIST ID</div>
+            <input style={input} placeholder="abc123def456..." value={gistId} onChange={e => setGistId(e.target.value)} />
+            {error && <div style={{ color: "#EF4444", fontSize: 11.5, fontFamily: m, marginBottom: 10, padding: "6px 10px", background: "#EF444415", borderRadius: 6 }}>{error}</div>}
+            <div style={{ background: "#F59E0B10", border: "1px solid #F59E0B30", borderRadius: 7, padding: "8px 11px", fontSize: 11.5, color: "#F59E0B", marginBottom: 12, lineHeight: 1.5 }}>
+              ⚠️ This will <strong>replace</strong> any local progress on this device with what's in the gist.
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button onClick={useExisting} disabled={!token || !gistId || busy} style={{ ...btn("#10B981", true), opacity: (!token || !gistId || busy) ? 0.5 : 1, flex: 1 }}>
+                {busy ? "Connecting..." : "Connect & pull"}
+              </button>
+              <button onClick={() => setStep("intro")} style={btn("#64748B")}>Back</button>
+            </div>
+          </>
+        )}
+
+        {step === "done-new" && (
+          <>
+            <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6, marginBottom: 12 }}>
+              Save this <strong style={{ color: "#E5E7EB" }}>Gist ID</strong> — you'll need it to connect your other devices.
+            </p>
+            <div style={{ background: "#0B1120", border: "1px solid #1E293B", borderRadius: 7, padding: 12, marginBottom: 14 }}>
+              <div style={{ fontSize: 10, fontFamily: m, color: "#64748B", letterSpacing: 1, marginBottom: 6, fontWeight: 600 }}>GIST ID</div>
+              <div style={{ fontFamily: m, fontSize: 13, color: "#06B6D4", wordBreak: "break-all", marginBottom: 8 }}>{createdId}</div>
+              <button onClick={() => navigator.clipboard?.writeText(createdId)} style={btn("#06B6D4", true)}>📋 Copy Gist ID</button>
+            </div>
+            <button onClick={onClose} style={{ ...btn("#10B981", true), width: "100%" }}>Done</button>
+          </>
+        )}
+
+        {step === "done-existing" && (
+          <>
+            <p style={{ fontSize: 13, color: "#94A3B8", lineHeight: 1.6, marginBottom: 14 }}>
+              This device is now syncing. Your progress will update automatically.
+            </p>
+            <button onClick={onClose} style={{ ...btn("#10B981", true), width: "100%" }}>Done</button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function App(){
   const[completed,setCompleted]=useState(()=>LS.get("se-done")||{});
@@ -2935,6 +3252,24 @@ function App(){
   const toggleHabit=useCallback(id=>{setHabitLog(p=>{const dh=p[todayKey]||{};const n={...p,[todayKey]:{...dh,[id]:!dh[id]}};LS.set("se-hab",n);return n;});},[todayKey]);
   const start=useCallback(()=>{setStartDate(todayKey);LS.set("se-start",todayKey);},[todayKey]);
   const reset=useCallback(()=>{if(!confirm("Reset all progress? This cannot be undone."))return;setCompleted({});setHabitLog({});setStartDate(null);setView("today");LS.del("se-done");LS.del("se-hab");LS.del("se-start");},[]);
+
+  const snapshot = React.useMemo(() => ({ completed, habitLog, startDate, labRef }),
+    [completed, habitLog, startDate, labRef]);
+
+  const applyRemote = useCallback((remote) => {
+    setCompleted(remote.completed); LS.set("se-done", remote.completed);
+    setHabitLog(remote.habitLog); LS.set("se-hab", remote.habitLog);
+    if (remote.startDate) { setStartDate(remote.startDate); LS.set("se-start", remote.startDate); }
+    if (remote.labRef) { setLabRef(remote.labRef); LS.set("se-ref", remote.labRef); }
+  }, []);
+
+  const sync = useGistSync({ snapshot, applyRemote });
+  const [showSyncModal, setShowSyncModal] = useState(false);
+
+  const disconnectSync = useCallback(() => {
+    if (!confirm("Disconnect this device from cloud sync? Local progress stays. The token is removed from this device only — the gist itself is not deleted.")) return;
+    sync.updateCfg(null);
+  }, [sync]);
 
   const updateRef=useCallback((field,value)=>{setLabRef(p=>{const n={...p,[field]:value};LS.set("se-ref",n);return n;});},[]);
 
@@ -3105,6 +3440,7 @@ function App(){
           <div>
             <div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:3,textTransform:"uppercase",fontWeight:600}}>Mission Control</div>
             <h1 style={{fontSize:20,fontWeight:800,margin:"4px 0 0",background:"linear-gradient(135deg,#06B6D4,#8B5CF6)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-0.3}}>Security Engineering Sprint</h1>
+            <SyncBadge status={sync.status} cfg={sync.cfg} onClick={() => sync.syncNow()} />
           </div>
           {startDate&&(
             <div style={{textAlign:"right"}}>
@@ -3459,21 +3795,72 @@ function App(){
               );
             })}
             <div style={{marginTop:18,padding:"14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:10}}>
-              <div style={{fontSize:11,fontFamily:m,color:"#94A3B8",letterSpacing:1.5,textTransform:"uppercase",marginBottom:8,fontWeight:700}}>🔄 Sync across devices</div>
-              <div style={{fontSize:12,color:"#94A3B8",lineHeight:1.55,marginBottom:12}}>
-                Progress is stored in this browser. To move it to another computer or phone: export here, then paste on the other device.
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
+                <div style={{fontSize:11,fontFamily:m,color:"#94A3B8",letterSpacing:1.5,textTransform:"uppercase",fontWeight:700}}>🔄 Cloud Sync</div>
+                {sync.cfg?.enabled && <SyncBadge status={sync.status} cfg={sync.cfg} onClick={() => sync.syncNow()} />}
               </div>
-              <div style={{display:"flex",gap:8}}>
-                <button onClick={exportProgress} style={{
-                  flex:1,padding:"10px",background:"#06B6D415",border:"1px solid #06B6D440",borderRadius:8,
-                  color:"#06B6D4",fontSize:12,fontFamily:m,cursor:"pointer",fontWeight:700,letterSpacing:0.5
-                }}>📤 Export (copy)</button>
-                <button onClick={importProgress} style={{
-                  flex:1,padding:"10px",background:"#8B5CF615",border:"1px solid #8B5CF640",borderRadius:8,
-                  color:"#8B5CF6",fontSize:12,fontFamily:m,cursor:"pointer",fontWeight:700,letterSpacing:0.5
-                }}>📥 Import (paste)</button>
-              </div>
+
+              {!sync.cfg?.enabled ? (
+                <>
+                  <div style={{fontSize:12,color:"#94A3B8",lineHeight:1.55,marginBottom:12}}>
+                    Sync your progress automatically across devices via a private GitHub Gist. Free. Token stays on this device.
+                  </div>
+                  <button onClick={() => setShowSyncModal(true)} style={{
+                    width:"100%",padding:"11px",background:"#06B6D4",border:"none",borderRadius:8,
+                    color:"#0B1120",fontSize:12.5,fontFamily:m,cursor:"pointer",fontWeight:800,letterSpacing:0.5
+                  }}>☁️ Set up cloud sync</button>
+                </>
+              ) : (
+                <>
+                  <div style={{fontSize:11,fontFamily:m,color:"#64748B",marginBottom:4,letterSpacing:1,fontWeight:600}}>GIST ID</div>
+                  <div style={{display:"flex",gap:6,marginBottom:10}}>
+                    <input readOnly value={sync.cfg.gistId} style={{
+                      flex:1,padding:"7px 10px",background:"#0B1120",border:"1px solid #1E293B",borderRadius:6,
+                      color:"#06B6D4",fontFamily:m,fontSize:11.5,outline:"none"
+                    }}/>
+                    <button onClick={() => navigator.clipboard?.writeText(sync.cfg.gistId)} style={{
+                      padding:"7px 10px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:6,
+                      color:"#06B6D4",fontFamily:m,fontSize:11,cursor:"pointer",fontWeight:600
+                    }}>📋</button>
+                  </div>
+                  {sync.status.error && (
+                    <div style={{fontSize:11,color:"#EF4444",fontFamily:m,marginBottom:10,padding:"6px 10px",background:"#EF444415",borderRadius:6,wordBreak:"break-word"}}>
+                      ⚠️ {sync.status.error}
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={() => sync.syncNow()} disabled={sync.status.state === "syncing"} style={{
+                      flex:1,padding:"10px",background:"#06B6D415",border:"1px solid #06B6D440",borderRadius:8,
+                      color:"#06B6D4",fontSize:11.5,fontFamily:m,cursor:"pointer",fontWeight:700,letterSpacing:0.5,
+                      opacity:sync.status.state === "syncing" ? 0.5 : 1
+                    }}>{sync.status.state === "syncing" ? "Syncing..." : "🔄 Sync now"}</button>
+                    <button onClick={disconnectSync} style={{
+                      padding:"10px 14px",background:"transparent",border:"1px solid #EF444433",borderRadius:8,
+                      color:"#EF4444",fontSize:11,fontFamily:m,cursor:"pointer",fontWeight:600
+                    }}>Disconnect</button>
+                  </div>
+                </>
+              )}
             </div>
+
+            <details style={{marginTop:10}}>
+              <summary style={{fontSize:11,fontFamily:m,color:"#64748B",cursor:"pointer",padding:"6px 0",letterSpacing:1,textTransform:"uppercase",fontWeight:600}}>Manual export / import (legacy)</summary>
+              <div style={{padding:"10px 0 0"}}>
+                <div style={{fontSize:11,color:"#64748B",lineHeight:1.55,marginBottom:8}}>
+                  Clipboard-based fallback if you don't want cloud sync.
+                </div>
+                <div style={{display:"flex",gap:8}}>
+                  <button onClick={exportProgress} style={{
+                    flex:1,padding:"9px",background:"#06B6D410",border:"1px solid #06B6D430",borderRadius:7,
+                    color:"#06B6D4",fontSize:11,fontFamily:m,cursor:"pointer",fontWeight:600
+                  }}>📤 Export</button>
+                  <button onClick={importProgress} style={{
+                    flex:1,padding:"9px",background:"#8B5CF610",border:"1px solid #8B5CF630",borderRadius:7,
+                    color:"#8B5CF6",fontSize:11,fontFamily:m,cursor:"pointer",fontWeight:600
+                  }}>📥 Import</button>
+                </div>
+              </div>
+            </details>
             <button onClick={reset} style={{
               width:"100%",padding:"11px",background:"transparent",border:"1px solid #EF444422",borderRadius:8,
               color:"#EF4444",fontSize:11,fontFamily:m,cursor:"pointer",marginTop:12,fontWeight:600,letterSpacing:0.5
@@ -3500,6 +3887,14 @@ function App(){
           </div>
         )}
       </div>
+
+      {showSyncModal && (
+        <SyncSetupModal
+          snapshot={snapshot}
+          onClose={() => setShowSyncModal(false)}
+          onSetup={(cfg) => { sync.updateCfg(cfg); }}
+        />
+      )}
     </div>
   );
 }
