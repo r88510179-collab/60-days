@@ -2840,6 +2840,13 @@ const localDateKey = (d = new Date()) => {
   const da = String(d.getDate()).padStart(2, "0");
   return `${y}-${mo}-${da}`;
 };
+// Parse a "YYYY-MM-DD" key back to a Date at LOCAL midnight.
+// Day arithmetic must go through date keys (not raw Date.now() deltas):
+// raw-ms math breaks across DST transitions where a calendar day is 23/25 h.
+const fromDateKey = (key) => {
+  const [y, mo, da] = key.split("-").map(Number);
+  return new Date(y, mo - 1, da);
+};
 
 // ===== AUTO-LINK URLs IN PROSE =====
 const linkify = (text, accent) => {
@@ -2997,14 +3004,14 @@ const TaskItem = React.memo(({ task, accent, done, prereqDone, isExp, onToggle, 
         borderLeft: done ? `3px solid ${c.color}` : `3px solid ${c.color}55`,
         borderRadius: isExp ? "10px 10px 0 0" : "10px"
       }}>
-        <button onClick={e => { e.stopPropagation(); onToggle(task.id); }} style={{
+        <button onClick={e => { e.stopPropagation(); onToggle(task.id); }} aria-label={`${done ? "Mark incomplete" : "Mark complete"}: ${task.text}`} style={{
           width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center",
           background: done ? c.color : "transparent",
           border: done ? "none" : `2px solid ${c.color}60`,
           fontSize: 13, color: "#fff", flexShrink: 0, marginTop: 1, cursor: "pointer", padding: 0
         }}>{done ? "✓" : ""}</button>
 
-        <button onClick={() => onExpand(isExp ? null : task.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+        <button onClick={() => onExpand(isExp ? null : task.id)} aria-label={`${isExp ? "Collapse" : "Expand"} instructions: ${task.text}`} aria-expanded={isExp} style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
             {task.icon && <span style={{ fontSize: 18, lineHeight: 1.3, flexShrink: 0 }}>{task.icon}</span>}
             <div style={{ flex: 1, fontSize: 14, color: done ? "#64748B" : "#E5E7EB", fontWeight: 500, textDecoration: done ? "line-through" : "none", lineHeight: 1.45, fontFamily: f }}>{task.text}</div>
@@ -3529,7 +3536,7 @@ function App(){
     }catch(e){alert("Could not import that JSON. Make sure you copied the full export from an app version at least as new as this one.");}
   },[]);
 
-  const dayNum=startDate?Math.max(1,Math.ceil((Date.now()-new Date(startDate+"T00:00:00").getTime())/86400000)):0;
+  const dayNum=startDate?Math.max(1,Math.floor((fromDateKey(todayKey)-fromDateKey(startDate))/86400000)+1):0;
   const totalTasks=DAYS.reduce((s,d)=>s+d.tasks.length,0);
   const doneTasks=DAYS.reduce((s,d)=>s+d.tasks.filter(t=>completed[t.id]).length,0);
   const pct=totalTasks?Math.round(doneTasks/totalTasks*100):0;
@@ -3647,12 +3654,12 @@ function App(){
             <>
               {/* Today navigation bar (prev/today/next) */}
               <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:14}}>
-                <button onClick={()=>{setSelectedDay(Math.max(1,td.day-1));setView("day");setExpandedTask(null);}} disabled={td.day<=1} style={{
+                <button onClick={()=>{setSelectedDay(Math.max(1,td.day-1));setView("day");setExpandedTask(null);}} disabled={td.day<=1} aria-label={`Go to previous day, day ${Math.max(1,td.day-1)}`} style={{
                   padding:"8px 12px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,
                   color:td.day<=1?"#334155":"#94A3B8",cursor:td.day<=1?"default":"pointer",fontFamily:m,fontSize:12,fontWeight:600,flex:1
                 }}>← Day {Math.max(1,td.day-1)}</button>
                 <div style={{padding:"8px 14px",background:"#06B6D415",border:"1px solid #06B6D440",borderRadius:8,color:"#06B6D4",fontFamily:m,fontSize:12,fontWeight:700,letterSpacing:0.5}}>TODAY</div>
-                <button onClick={()=>{setSelectedDay(Math.min(60,td.day+1));setView("day");setExpandedTask(null);}} disabled={td.day>=60} style={{
+                <button onClick={()=>{setSelectedDay(Math.min(60,td.day+1));setView("day");setExpandedTask(null);}} disabled={td.day>=60} aria-label={`Go to next day, day ${Math.min(60,td.day+1)}`} style={{
                   padding:"8px 12px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,
                   color:td.day>=60?"#334155":"#94A3B8",cursor:td.day>=60?"default":"pointer",fontFamily:m,fontSize:12,fontWeight:600,flex:1
                 }}>Day {Math.min(60,td.day+1)} →</button>
@@ -3869,7 +3876,7 @@ function App(){
         {startDate&&view==="day"&&activeDayData&&(
           <>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:16,gap:10}}>
-              <button onClick={()=>{setSelectedDay(Math.max(1,activeDay-1));setExpandedTask(null);}} disabled={activeDay<=1} style={{
+              <button onClick={()=>{setSelectedDay(Math.max(1,activeDay-1));setExpandedTask(null);}} disabled={activeDay<=1} aria-label={`Go to previous day, day ${Math.max(1,activeDay-1)}`} style={{
                 padding:"8px 14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,
                 color:activeDay<=1?"#334155":"#94A3B8",cursor:activeDay<=1?"default":"pointer",fontFamily:m,fontSize:13,fontWeight:600
               }}>← Prev</button>
@@ -3878,7 +3885,7 @@ function App(){
                 <div style={{fontSize:26,fontWeight:900,fontFamily:m,color:activePhase?.color||"#06B6D4",lineHeight:1.1,letterSpacing:-0.5}}>{activeDay}</div>
                 <div style={{fontSize:13,fontWeight:600,color:"#E5E7EB",marginTop:2}}>{activeDayData.label}</div>
               </div>
-              <button onClick={()=>{setSelectedDay(Math.min(60,activeDay+1));setExpandedTask(null);}} disabled={activeDay>=60} style={{
+              <button onClick={()=>{setSelectedDay(Math.min(60,activeDay+1));setExpandedTask(null);}} disabled={activeDay>=60} aria-label={`Go to next day, day ${Math.min(60,activeDay+1)}`} style={{
                 padding:"8px 14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:8,
                 color:activeDay>=60?"#334155":"#94A3B8",cursor:activeDay>=60?"default":"pointer",fontFamily:m,fontSize:13,fontWeight:600
               }}>Next →</button>
