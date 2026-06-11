@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#0B1120">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -2829,6 +2831,16 @@ const DAYS=[
   ]},
 ];
 
+// ===== LOCAL DATE KEY (fixes UTC day-flip bug) =====
+// toISOString() is UTC — in Eastern time the "day" would flip at 8 PM.
+// All habit/streak/day-number logic must use the device's local calendar date.
+const localDateKey = (d = new Date()) => {
+  const y = d.getFullYear();
+  const mo = String(d.getMonth() + 1).padStart(2, "0");
+  const da = String(d.getDate()).padStart(2, "0");
+  return `${y}-${mo}-${da}`;
+};
+
 // ===== AUTO-LINK URLs IN PROSE =====
 const linkify = (text, accent) => {
   if (!text || typeof text !== "string") return text;
@@ -2861,7 +2873,7 @@ const linkify = (text, accent) => {
   });
 };
 
-// ===== STEP RENDERING HELPERS (new) =====
+// ===== STEP RENDERING HELPERS =====
 const isSectionLine = s => s.startsWith("## ");
 const isBulletLine = s => s.startsWith("•");
 const isCodeStart = s => /^(\$|Connect-|Get-|New-|Set-|Install-|Remove-|foreach|if |while |for |try|catch|\}|\)|gam |Import-|Export-|cd |mkdir |#|@\{|Revoke-)/.test(s);
@@ -2906,10 +2918,14 @@ const groupSteps = (steps) => {
   return groups;
 };
 
+// Module-level font constants (used by hoisted components below)
+const F_FONT = "'Outfit',sans-serif";
+const M_FONT = "'JetBrains Mono',monospace";
+
 // Code block component with its own copy button.
 const CodeBlock = ({ lines, accent }) => {
   const [copied, setCopied] = useState(false);
-  const m = "'JetBrains Mono',monospace";
+  const m = M_FONT;
   const text = lines.join("\n");
   const doCopy = () => {
     const fallback = () => {
@@ -2948,10 +2964,133 @@ const CodeBlock = ({ lines, accent }) => {
   );
 };
 
+// ===== HOISTED TASK COMPONENTS =====
+// Previously defined inside App — every state change created new component
+// identities and remounted the whole task subtree. Hoisted + memoized:
+// a toggle or a notes keystroke now re-renders only the affected task.
+const DiffBadge = React.memo(({ level }) => {
+  const m = M_FONT;
+  const colors = ["", "#10B981", "#F59E0B", "#EF4444"];
+  const dots = [1, 2, 3].map(i => (
+    <span key={i} style={{ display: "inline-block", width: 5, height: 5, borderRadius: "50%", margin: "0 1px", background: i <= level ? colors[level] : "#1E293B" }}/>
+  ));
+  return (
+    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "2px 7px", borderRadius: 4, background: `${colors[level]}12`, border: `1px solid ${colors[level]}25` }}>
+      <span style={{ display: "inline-flex", alignItems: "center" }}>{dots}</span>
+      <span style={{ fontSize: 9, fontFamily: m, letterSpacing: 0.5, color: colors[level] }}>{DIFF[level]}</span>
+    </span>
+  );
+});
+
+const TaskItem = React.memo(({ task, accent, done, prereqDone, isExp, onToggle, onExpand, note, onNote }) => {
+  const f = F_FONT, m = M_FONT;
+  const c = CAT[task.cat];
+  const stepCount = task.steps ? task.steps.filter(s => !isSectionLine(s) && !isCodeContinue(s)).length : 0;
+  const groups = task.steps ? groupSteps(task.steps) : [];
+
+  return (
+    <div style={{ marginBottom: 8 }}>
+      <div style={{
+        display: "flex", alignItems: "flex-start", gap: 11, padding: "13px 14px",
+        background: done ? `${c.color}0A` : "#151D2E",
+        border: done ? `1px solid ${c.color}30` : `1px solid #1E293B`,
+        borderLeft: done ? `3px solid ${c.color}` : `3px solid ${c.color}55`,
+        borderRadius: isExp ? "10px 10px 0 0" : "10px"
+      }}>
+        <button onClick={e => { e.stopPropagation(); onToggle(task.id); }} style={{
+          width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center",
+          background: done ? c.color : "transparent",
+          border: done ? "none" : `2px solid ${c.color}60`,
+          fontSize: 13, color: "#fff", flexShrink: 0, marginTop: 1, cursor: "pointer", padding: 0
+        }}>{done ? "✓" : ""}</button>
+
+        <button onClick={() => onExpand(isExp ? null : task.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
+          <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+            {task.icon && <span style={{ fontSize: 18, lineHeight: 1.3, flexShrink: 0 }}>{task.icon}</span>}
+            <div style={{ flex: 1, fontSize: 14, color: done ? "#64748B" : "#E5E7EB", fontWeight: 500, textDecoration: done ? "line-through" : "none", lineHeight: 1.45, fontFamily: f }}>{task.text}</div>
+          </div>
+
+          <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 8, marginLeft: task.icon ? 26 : 0 }}>
+            <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, letterSpacing: 0.5, color: c.color, background: `${c.color}15`, textTransform: "uppercase" }}>{c.label}</span>
+            {task.time && <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, color: "#94A3B8", background: "#1E293B" }}>⏱ {task.time}</span>}
+            {task.diff && <DiffBadge level={task.diff} />}
+            {task.prereq && !prereqDone && (
+              <span title={`Requires ${task.prereq} complete`} style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, color: "#F59E0B", background: "#F59E0B15", border: "1px solid #F59E0B30" }}>🔒 needs {task.prereq}</span>
+            )}
+            {note && !isExp && <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, color: "#8B5CF6", background: "#8B5CF615", border: "1px solid #8B5CF630" }}>🗒 note</span>}
+            {task.steps && <span style={{ fontSize: 10, color: "#64748B", fontFamily: m, marginLeft: "auto" }}>{isExp ? "▲ Hide" : `▼ ${stepCount} steps`}</span>}
+          </div>
+        </button>
+      </div>
+
+      {isExp && (
+        <div style={{ background: "#0D1525", border: "1px solid #1E293B", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "14px 14px 16px" }}>
+          {task.prereq && (
+            <div style={{ fontSize: 10, fontFamily: m, color: prereqDone ? "#10B981" : "#F59E0B", marginBottom: 12, padding: "6px 10px", background: prereqDone ? "#10B98110" : "#F59E0B10", borderRadius: 6, border: `1px solid ${prereqDone ? "#10B98125" : "#F59E0B25"}` }}>
+              {prereqDone ? "✓" : "🔒"} Prerequisite: {task.prereq} {prereqDone ? "complete" : "not yet complete"}
+            </div>
+          )}
+          {(() => {
+            let stepNum = 0;
+            return groups.map((g, i) => {
+              if (g.type === "section") {
+                return (
+                  <div key={i} style={{ fontSize: 10, fontFamily: m, color: c.color, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginTop: i === 0 ? 0 : 18, marginBottom: 8, paddingBottom: 5, borderBottom: `1px solid ${c.color}25` }}>
+                    {g.text}
+                  </div>
+                );
+              }
+              if (g.type === "code") {
+                return <CodeBlock key={i} lines={g.lines} accent={c.color} />;
+              }
+              if (g.type === "bullet") {
+                return (
+                  <div key={i} style={{ display: "flex", gap: 9, marginBottom: 6, marginLeft: 27, alignItems: "flex-start" }}>
+                    <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, fontFamily: f, flex: 1 }}>{linkify(g.text, c.color)}</span>
+                  </div>
+                );
+              }
+              // prose
+              stepNum++;
+              return (
+                <div key={i} style={{ display: "flex", gap: 9, marginBottom: 10, alignItems: "flex-start" }}>
+                  <span style={{ fontSize: 10, fontFamily: m, color: c.color, fontWeight: 700, flexShrink: 0, marginTop: 4, minWidth: 18, textAlign: "right" }}>
+                    {stepNum}.
+                  </span>
+                  <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.65, fontFamily: f, wordBreak: "break-word", flex: 1 }}>{linkify(g.text, c.color)}</span>
+                </div>
+              );
+            });
+          })()}
+
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 10, fontFamily: m, color: "#94A3B8", letterSpacing: 1.5, fontWeight: 700, marginBottom: 6, textTransform: "uppercase" }}>
+              🗒 Lab notes <span style={{ color: "#475569", fontWeight: 600 }}>· saved + synced</span>
+            </div>
+            <textarea
+              value={note}
+              onChange={e => onNote(task.id, e.target.value)}
+              placeholder="What happened, exact errors hit, time taken, values you'll need later..."
+              rows={3}
+              style={{
+                width: "100%", boxSizing: "border-box", padding: "9px 11px",
+                background: "#0B1120", border: "1px solid #1E293B", borderRadius: 7,
+                color: "#E5E7EB", fontFamily: f, fontSize: 12.5, lineHeight: 1.55,
+                outline: "none", resize: "vertical"
+              }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
+  );
+});
+
 // ===== GITHUB GIST SYNC =====
 const GIST_FILE = "sprint-progress.json";
 const GIST_DESCRIPTION = "Security Engineering Sprint — progress (private)";
 const SYNC_DEBOUNCE_MS = 2500;
+const SNAPSHOT_VERSION = 2; // v1: completed/habitLog/startDate/labRef · v2: + notes
 
 const gistFetch = async (token, path, opts = {}) => {
   const res = await fetch(`https://api.github.com${path}`, {
@@ -2993,27 +3132,61 @@ const gistAPI = {
   })
 };
 
+const EMPTY_LABREF = { tenantId: "", tenantDomain: "", adminUpn: "", recoveryUsb: "" };
+
 const buildSnapshot = (data) => JSON.stringify({
-  version: 1,
+  version: SNAPSHOT_VERSION,
   lastModified: new Date().toISOString(),
   completed: data.completed || {},
   habitLog: data.habitLog || {},
   startDate: data.startDate || null,
-  labRef: data.labRef || { tenantId: "", tenantDomain: "", adminUpn: "", recoveryUsb: "" }
+  labRef: data.labRef || EMPTY_LABREF,
+  notes: data.notes || {}
 }, null, 2);
 
 const parseSnapshot = (content) => {
   const data = JSON.parse(content);
+  if (typeof data.version === "number" && data.version > SNAPSHOT_VERSION) {
+    throw new Error(`Snapshot is v${data.version}, this app reads up to v${SNAPSHOT_VERSION}. Open the latest deployed app on this device (hard-refresh), then retry.`);
+  }
   return {
     completed: data.completed || {},
     habitLog: data.habitLog || {},
     startDate: data.startDate || null,
-    labRef: data.labRef || { tenantId: "", tenantDomain: "", adminUpn: "", recoveryUsb: "" }
+    labRef: data.labRef || EMPTY_LABREF,
+    notes: data.notes || {}
+  };
+};
+
+// Merge local + remote instead of wholesale replace. Rules:
+// completed/notes: per-key, local wins on conflict (protects work done offline
+//   on THIS device; keys only present remotely are kept).
+// habitLog: per-day inner merge, local wins per habit.
+// startDate: keep local if set, else adopt remote.
+// labRef: per-field, local non-empty value wins, else remote fills the gap.
+// Known edge: editing the SAME task's note on two offline devices — the device
+// that syncs last wins for that note. Done-flags can't be lost, only notes text
+// in that specific double-edit case.
+const mergeSnapshots = (local, remote) => {
+  const habitLog = { ...remote.habitLog };
+  for (const day in (local.habitLog || {})) {
+    habitLog[day] = { ...(remote.habitLog?.[day] || {}), ...local.habitLog[day] };
+  }
+  const labRef = { ...EMPTY_LABREF, ...(remote.labRef || {}) };
+  for (const k in (local.labRef || {})) {
+    if (local.labRef[k]) labRef[k] = local.labRef[k];
+  }
+  return {
+    completed: { ...(remote.completed || {}), ...(local.completed || {}) },
+    habitLog,
+    startDate: local.startDate || remote.startDate || null,
+    labRef,
+    notes: { ...(remote.notes || {}), ...(local.notes || {}) }
   };
 };
 
 const snapshotKey = (s) => JSON.stringify({
-  c: s.completed, h: s.habitLog, s: s.startDate, l: s.labRef
+  c: s.completed, h: s.habitLog, s: s.startDate, l: s.labRef, n: s.notes
 });
 
 const fmtRelative = (iso) => {
@@ -3033,6 +3206,8 @@ function useGistSync({ snapshot, applyRemote }) {
   const [hydrated, setHydrated] = useState(false);
   const debounceRef = React.useRef(null);
   const lastSentKeyRef = React.useRef(null);
+  const snapshotRef = React.useRef(snapshot);
+  useEffect(() => { snapshotRef.current = snapshot; });
 
   const updateCfg = useCallback((next) => {
     if (next) LS.set("se-sync", next); else LS.del("se-sync");
@@ -3040,7 +3215,7 @@ function useGistSync({ snapshot, applyRemote }) {
     if (!next) { setHydrated(false); lastSentKeyRef.current = null; }
   }, []);
 
-  // Pull on mount / cfg change
+  // Pull on mount / cfg change — MERGE with local, never clobber offline work.
   useEffect(() => {
     if (!cfg?.enabled || !cfg?.token || !cfg?.gistId) { setHydrated(false); return; }
     let cancelled = false;
@@ -3050,8 +3225,15 @@ function useGistSync({ snapshot, applyRemote }) {
         const { content } = await gistAPI.read(cfg.token, cfg.gistId);
         if (cancelled) return;
         const remote = parseSnapshot(content);
-        applyRemote(remote);
-        lastSentKeyRef.current = snapshotKey(remote);
+        const merged = mergeSnapshots(snapshotRef.current, remote);
+        applyRemote(merged);
+        const mergedKey = snapshotKey(merged);
+        if (mergedKey !== snapshotKey(remote)) {
+          // Local had progress the gist lacked — push the union back up.
+          await gistAPI.update(cfg.token, cfg.gistId, buildSnapshot(merged));
+        }
+        if (cancelled) return;
+        lastSentKeyRef.current = mergedKey;
         setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
         setHydrated(true);
       } catch (e) {
@@ -3084,23 +3266,25 @@ function useGistSync({ snapshot, applyRemote }) {
     if (!cfg?.enabled) return;
     setStatus({ state: "syncing", error: null });
     try {
-      await gistAPI.update(cfg.token, cfg.gistId, buildSnapshot(snapshot));
       const { content } = await gistAPI.read(cfg.token, cfg.gistId);
       const remote = parseSnapshot(content);
-      applyRemote(remote);
-      lastSentKeyRef.current = snapshotKey(remote);
+      const merged = mergeSnapshots(snapshotRef.current, remote);
+      await gistAPI.update(cfg.token, cfg.gistId, buildSnapshot(merged));
+      applyRemote(merged);
+      lastSentKeyRef.current = snapshotKey(merged);
       setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+      setHydrated(true);
     } catch (e) {
       setStatus({ state: "error", error: e.message });
     }
-  }, [cfg, snapshot, applyRemote]);
+  }, [cfg, applyRemote]);
 
   return { cfg, updateCfg, status, syncNow, hydrated };
 }
 
 function SyncBadge({ status, cfg, onClick }) {
   if (!cfg?.enabled) return null;
-  const m = "'JetBrains Mono',monospace";
+  const m = M_FONT;
   const colors = { idle: "#10B981", syncing: "#06B6D4", error: "#EF4444" };
   const labels = {
     idle: status.lastSync ? `Synced ${fmtRelative(status.lastSync)}` : "Synced",
@@ -3129,8 +3313,8 @@ function SyncSetupModal({ snapshot, onClose, onSetup }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [createdId, setCreatedId] = useState(null);
-  const m = "'JetBrains Mono',monospace";
-  const f = "'Outfit',sans-serif";
+  const m = M_FONT;
+  const f = F_FONT;
 
   const createNew = async () => {
     setBusy(true); setError(null);
@@ -3205,9 +3389,9 @@ function SyncSetupModal({ snapshot, onClose, onSetup }) {
         {step === "new" && (
           <>
             <p style={{ fontSize: 12.5, color: "#94A3B8", lineHeight: 1.6, marginBottom: 12 }}>
-              Paste your GitHub PAT (with <code style={{ color: "#06B6D4", fontFamily: m, fontSize: 11.5 }}>gist</code> scope). This stays on your device only.
+              Use a GitHub <strong style={{ color: "#E5E7EB" }}>fine-grained</strong> personal access token with ONLY the <code style={{ color: "#06B6D4", fontFamily: m, fontSize: 11.5 }}>Gists: Read and write</code> permission, and set an expiration date. Create one at github.com → Settings → Developer settings → Fine-grained tokens. The token stays on this device only.
             </p>
-            <input style={input} type="password" placeholder="ghp_..." value={token} onChange={e => setToken(e.target.value)} />
+            <input style={input} type="password" placeholder="github_pat_... or ghp_..." value={token} onChange={e => setToken(e.target.value)} />
             {error && <div style={{ color: "#EF4444", fontSize: 11.5, fontFamily: m, marginBottom: 10, padding: "6px 10px", background: "#EF444415", borderRadius: 6 }}>{error}</div>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={createNew} disabled={!token || busy} style={{ ...btn("#10B981", true), opacity: (!token || busy) ? 0.5 : 1, flex: 1 }}>
@@ -3221,19 +3405,19 @@ function SyncSetupModal({ snapshot, onClose, onSetup }) {
         {step === "existing" && (
           <>
             <p style={{ fontSize: 12.5, color: "#94A3B8", lineHeight: 1.6, marginBottom: 12 }}>
-              Paste the same GitHub PAT (or another with <code style={{ color: "#06B6D4", fontFamily: m, fontSize: 11.5 }}>gist</code> scope) plus the Gist ID from your other device.
+              Paste the same fine-grained token (or another with <code style={{ color: "#06B6D4", fontFamily: m, fontSize: 11.5 }}>Gists: Read and write</code>) plus the Gist ID from your other device.
             </p>
-            <div style={{ fontSize: 10, fontFamily: m, color: "#64748B", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>GITHUB PAT</div>
-            <input style={input} type="password" placeholder="ghp_..." value={token} onChange={e => setToken(e.target.value)} />
+            <div style={{ fontSize: 10, fontFamily: m, color: "#64748B", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>GITHUB TOKEN</div>
+            <input style={input} type="password" placeholder="github_pat_... or ghp_..." value={token} onChange={e => setToken(e.target.value)} />
             <div style={{ fontSize: 10, fontFamily: m, color: "#64748B", letterSpacing: 1, marginBottom: 4, fontWeight: 600 }}>GIST ID</div>
             <input style={input} placeholder="abc123def456..." value={gistId} onChange={e => setGistId(e.target.value)} />
             {error && <div style={{ color: "#EF4444", fontSize: 11.5, fontFamily: m, marginBottom: 10, padding: "6px 10px", background: "#EF444415", borderRadius: 6 }}>{error}</div>}
-            <div style={{ background: "#F59E0B10", border: "1px solid #F59E0B30", borderRadius: 7, padding: "8px 11px", fontSize: 11.5, color: "#F59E0B", marginBottom: 12, lineHeight: 1.5 }}>
-              ⚠️ This will <strong>replace</strong> any local progress on this device with what's in the gist.
+            <div style={{ background: "#06B6D410", border: "1px solid #06B6D430", borderRadius: 7, padding: "8px 11px", fontSize: 11.5, color: "#06B6D4", marginBottom: 12, lineHeight: 1.5 }}>
+              ℹ️ Cloud and local progress will be <strong>merged</strong> — nothing on this device gets wiped.
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={useExisting} disabled={!token || !gistId || busy} style={{ ...btn("#10B981", true), opacity: (!token || !gistId || busy) ? 0.5 : 1, flex: 1 }}>
-                {busy ? "Connecting..." : "Connect & pull"}
+                {busy ? "Connecting..." : "Connect & merge"}
               </button>
               <button onClick={() => setStep("intro")} style={btn("#64748B")}>Back</button>
             </div>
@@ -3267,32 +3451,45 @@ function SyncSetupModal({ snapshot, onClose, onSetup }) {
   );
 }
 
+const PORTALS = [
+  ["🛡️ Entra", "https://entra.microsoft.com"],
+  ["📱 Intune", "https://intune.microsoft.com"],
+  ["🏢 M365 Admin", "https://admin.microsoft.com"],
+  ["🚨 Defender", "https://security.microsoft.com"],
+  ["🧪 Graph Explorer", "https://developer.microsoft.com/en-us/graph/graph-explorer"],
+  ["🎓 Learn Transcript", "https://learn.microsoft.com/en-us/users/me/transcript"]
+];
+
 function App(){
   const[completed,setCompleted]=useState(()=>LS.get("se-done")||{});
   const[habitLog,setHabitLog]=useState(()=>LS.get("se-hab")||{});
   const[startDate,setStartDate]=useState(()=>LS.get("se-start"));
   const[labRef,setLabRef]=useState(()=>LS.get("se-ref")||{tenantId:"",tenantDomain:"",adminUpn:"",recoveryUsb:""});
+  const[notes,setNotes]=useState(()=>LS.get("se-notes")||{});
   const[selectedDay,setSelectedDay]=useState(null);
   const[view,setView]=useState("today");
   const[expandedTask,setExpandedTask]=useState(null);
   const[expandedHabit,setExpandedHabit]=useState(null);
   const[showRef,setShowRef]=useState(false);
-  const[showSync,setShowSync]=useState(false);
+  const[searchQuery,setSearchQuery]=useState("");
 
   const toggle=useCallback(id=>{setCompleted(p=>{const n={...p,[id]:!p[id]};LS.set("se-done",n);return n;});},[]);
-  const todayKey=new Date().toISOString().slice(0,10);
+  const todayKey=localDateKey();
   const toggleHabit=useCallback(id=>{setHabitLog(p=>{const dh=p[todayKey]||{};const n={...p,[todayKey]:{...dh,[id]:!dh[id]}};LS.set("se-hab",n);return n;});},[todayKey]);
   const start=useCallback(()=>{setStartDate(todayKey);LS.set("se-start",todayKey);},[todayKey]);
-  const reset=useCallback(()=>{if(!confirm("Reset all progress? This cannot be undone."))return;setCompleted({});setHabitLog({});setStartDate(null);setView("today");LS.del("se-done");LS.del("se-hab");LS.del("se-start");},[]);
+  const reset=useCallback(()=>{if(!confirm("Reset all progress, habits, and lab notes? Lab Reference values are kept. This cannot be undone."))return;setCompleted({});setHabitLog({});setStartDate(null);setNotes({});setView("today");LS.del("se-done");LS.del("se-hab");LS.del("se-start");LS.del("se-notes");},[]);
 
-  const snapshot = React.useMemo(() => ({ completed, habitLog, startDate, labRef }),
-    [completed, habitLog, startDate, labRef]);
+  const updateNote=useCallback((id,val)=>{setNotes(p=>{const n={...p};if(val)n[id]=val;else delete n[id];LS.set("se-notes",n);return n;});},[]);
+
+  const snapshot = React.useMemo(() => ({ completed, habitLog, startDate, labRef, notes }),
+    [completed, habitLog, startDate, labRef, notes]);
 
   const applyRemote = useCallback((remote) => {
     setCompleted(remote.completed); LS.set("se-done", remote.completed);
     setHabitLog(remote.habitLog); LS.set("se-hab", remote.habitLog);
     if (remote.startDate) { setStartDate(remote.startDate); LS.set("se-start", remote.startDate); }
     if (remote.labRef) { setLabRef(remote.labRef); LS.set("se-ref", remote.labRef); }
+    setNotes(remote.notes || {}); LS.set("se-notes", remote.notes || {});
   }, []);
 
   const sync = useGistSync({ snapshot, applyRemote });
@@ -3306,14 +3503,14 @@ function App(){
   const updateRef=useCallback((field,value)=>{setLabRef(p=>{const n={...p,[field]:value};LS.set("se-ref",n);return n;});},[]);
 
   const exportProgress=useCallback(()=>{
-    const data={version:1,exported:new Date().toISOString(),completed,habitLog,startDate,labRef};
+    const data={version:SNAPSHOT_VERSION,exported:new Date().toISOString(),completed,habitLog,startDate,labRef,notes};
     const json=JSON.stringify(data,null,2);
     navigator.clipboard.writeText(json).then(()=>{
       alert("Progress copied to clipboard. On your other device: open this same site → Phases → Import Progress → paste.");
     }).catch(()=>{
       prompt("Copy this text and paste it on your other device:",json);
     });
-  },[completed,habitLog,startDate,labRef]);
+  },[completed,habitLog,startDate,labRef,notes]);
 
   const importProgress=useCallback(()=>{
     const json=prompt("Paste the progress JSON from your other device:");
@@ -3321,13 +3518,15 @@ function App(){
     try{
       const data=JSON.parse(json);
       if(!data.completed||typeof data.completed!=="object")throw new Error("Invalid format");
+      if(typeof data.version==="number"&&data.version>SNAPSHOT_VERSION)throw new Error("Newer version");
       if(!confirm(`Import progress from ${data.exported||"unknown date"}? This will OVERWRITE your current progress on this device.`))return;
       setCompleted(data.completed||{});LS.set("se-done",data.completed||{});
       setHabitLog(data.habitLog||{});LS.set("se-hab",data.habitLog||{});
       if(data.startDate){setStartDate(data.startDate);LS.set("se-start",data.startDate);}
       if(data.labRef){setLabRef(data.labRef);LS.set("se-ref",data.labRef);}
+      setNotes(data.notes||{});LS.set("se-notes",data.notes||{});
       alert("Imported successfully.");
-    }catch(e){alert("Could not parse that JSON. Make sure you copied the full export.");}
+    }catch(e){alert("Could not import that JSON. Make sure you copied the full export from an app version at least as new as this one.");}
   },[]);
 
   const dayNum=startDate?Math.max(1,Math.ceil((Date.now()-new Date(startDate+"T00:00:00").getTime())/86400000)):0;
@@ -3342,7 +3541,7 @@ function App(){
     const now=new Date();now.setHours(0,0,0,0);
     for(let i=0;i<90;i++){
       const d=new Date(now);d.setDate(d.getDate()-i);
-      const k=d.toISOString().slice(0,10);
+      const k=localDateKey(d);
       if(k<startDate)break;
       const dh=habitLog[k]||{};
       const a=HABITS.every(h=>dh[h.id]);
@@ -3356,112 +3555,19 @@ function App(){
   const activePhase=PHASES.find(p=>activeDay>=p.days[0]&&activeDay<=p.days[1]);
   const currentPhaseIdx=dayNum<=5?0:dayNum<=30?1:dayNum<=50?2:3;
 
-  const f="'Outfit',sans-serif";
-  const m="'JetBrains Mono',monospace";
+  const f=F_FONT;
+  const m=M_FONT;
 
-  const isCode=s=>/^(\$|Connect-|Get-|New-|Set-|Install-|Remove-|foreach|\}|\)|gam |Import-|Export-)/.test(s);
-  const isBullet=s=>s.startsWith("•");
-  const isSection=s=>s.startsWith("## ");
-
-  const DiffBadge=({level})=>{
-    const colors=["","#10B981","#F59E0B","#EF4444"];
-    const dots=[1,2,3].map(i=>(
-      <span key={i} style={{display:"inline-block",width:5,height:5,borderRadius:"50%",margin:"0 1px",background:i<=level?colors[level]:"#1E293B"}}/>
-    ));
-    return(
-      <span style={{display:"inline-flex",alignItems:"center",gap:4,padding:"2px 7px",borderRadius:4,background:`${colors[level]}12`,border:`1px solid ${colors[level]}25`}}>
-        <span style={{display:"inline-flex",alignItems:"center"}}>{dots}</span>
-        <span style={{fontSize:9,fontFamily:m,letterSpacing:0.5,color:colors[level]}}>{DIFF[level]}</span>
-      </span>
-    );
-  };
-
-  const TaskItem = ({ task, accent }) => {
-    const done = completed[task.id];
-    const c = CAT[task.cat];
-    const isExp = expandedTask === task.id;
-    const stepCount = task.steps ? task.steps.filter(s => !isSectionLine(s) && !isCodeContinue(s)).length : 0;
-    const prereqDone = task.prereq ? completed[task.prereq] : true;
-    const groups = task.steps ? groupSteps(task.steps) : [];
-
-    return (
-      <div style={{ marginBottom: 8 }}>
-        <div style={{
-          display: "flex", alignItems: "flex-start", gap: 11, padding: "13px 14px",
-          background: done ? `${c.color}0A` : "#151D2E",
-          border: done ? `1px solid ${c.color}30` : `1px solid #1E293B`,
-          borderLeft: done ? `3px solid ${c.color}` : `3px solid ${c.color}55`,
-          borderRadius: isExp ? "10px 10px 0 0" : "10px"
-        }}>
-          <button onClick={e => { e.stopPropagation(); toggle(task.id); }} style={{
-            width: 24, height: 24, borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center",
-            background: done ? c.color : "transparent",
-            border: done ? "none" : `2px solid ${c.color}60`,
-            fontSize: 13, color: "#fff", flexShrink: 0, marginTop: 1, cursor: "pointer", padding: 0
-          }}>{done ? "✓" : ""}</button>
-
-          <button onClick={() => setExpandedTask(isExp ? null : task.id)} style={{ flex: 1, minWidth: 0, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: 0 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-              {task.icon && <span style={{ fontSize: 18, lineHeight: 1.3, flexShrink: 0 }}>{task.icon}</span>}
-              <div style={{ flex: 1, fontSize: 14, color: done ? "#64748B" : "#E5E7EB", fontWeight: 500, textDecoration: done ? "line-through" : "none", lineHeight: 1.45, fontFamily: f }}>{task.text}</div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, marginTop: 8, marginLeft: task.icon ? 26 : 0 }}>
-              <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, letterSpacing: 0.5, color: c.color, background: `${c.color}15`, textTransform: "uppercase" }}>{c.label}</span>
-              {task.time && <span style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, color: "#94A3B8", background: "#1E293B" }}>⏱ {task.time}</span>}
-              {task.diff && <DiffBadge level={task.diff} />}
-              {task.prereq && !prereqDone && (
-                <span title={`Requires ${task.prereq} complete`} style={{ padding: "2px 7px", borderRadius: 4, fontSize: 9, fontFamily: m, color: "#F59E0B", background: "#F59E0B15", border: "1px solid #F59E0B30" }}>🔒 needs {task.prereq}</span>
-              )}
-              {task.steps && <span style={{ fontSize: 10, color: "#64748B", fontFamily: m, marginLeft: "auto" }}>{isExp ? "▲ Hide" : `▼ ${stepCount} steps`}</span>}
-            </div>
-          </button>
-        </div>
-
-        {isExp && task.steps && (
-          <div style={{ background: "#0D1525", border: "1px solid #1E293B", borderTop: "none", borderRadius: "0 0 10px 10px", padding: "14px 14px 16px" }}>
-            {task.prereq && (
-              <div style={{ fontSize: 10, fontFamily: m, color: prereqDone ? "#10B981" : "#F59E0B", marginBottom: 12, padding: "6px 10px", background: prereqDone ? "#10B98110" : "#F59E0B10", borderRadius: 6, border: `1px solid ${prereqDone ? "#10B98125" : "#F59E0B25"}` }}>
-                {prereqDone ? "✓" : "🔒"} Prerequisite: {task.prereq} {prereqDone ? "complete" : "not yet complete"}
-              </div>
-            )}
-            {(() => {
-              let stepNum = 0;
-              return groups.map((g, i) => {
-                if (g.type === "section") {
-                  return (
-                    <div key={i} style={{ fontSize: 10, fontFamily: m, color: c.color, fontWeight: 700, letterSpacing: 1.5, textTransform: "uppercase", marginTop: i === 0 ? 0 : 18, marginBottom: 8, paddingBottom: 5, borderBottom: `1px solid ${c.color}25` }}>
-                      {g.text}
-                    </div>
-                  );
-                }
-                if (g.type === "code") {
-                  return <CodeBlock key={i} lines={g.lines} accent={c.color} />;
-                }
-                if (g.type === "bullet") {
-                  return (
-                    <div key={i} style={{ display: "flex", gap: 9, marginBottom: 6, marginLeft: 27, alignItems: "flex-start" }}>
-                      <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.6, fontFamily: f, flex: 1 }}>{linkify(g.text, c.color)}</span>
-                    </div>
-                  );
-                }
-                // prose
-                stepNum++;
-                return (
-                  <div key={i} style={{ display: "flex", gap: 9, marginBottom: 10, alignItems: "flex-start" }}>
-                    <span style={{ fontSize: 10, fontFamily: m, color: c.color, fontWeight: 700, flexShrink: 0, marginTop: 4, minWidth: 18, textAlign: "right" }}>
-                      {stepNum}.
-                    </span>
-                    <span style={{ fontSize: 13, color: "#CBD5E1", lineHeight: 1.65, fontFamily: f, wordBreak: "break-word", flex: 1 }}>{linkify(g.text, c.color)}</span>
-                  </div>
-                );
-              });
-            })()}
-          </div>
-        )}
-      </div>
-    );
-  };
+  const renderTask=(t,accent)=>(
+    <TaskItem key={t.id} task={t} accent={accent}
+      done={!!completed[t.id]}
+      prereqDone={t.prereq?!!completed[t.prereq]:true}
+      isExp={expandedTask===t.id}
+      onToggle={toggle}
+      onExpand={setExpandedTask}
+      note={notes[t.id]||""}
+      onNote={updateNote}/>
+  );
 
   return(
     <div style={{minHeight:"100dvh",background:"#0B1120",color:"#E2E8F0",fontFamily:f}}>
@@ -3515,7 +3621,7 @@ function App(){
       {/* NAV TABS */}
       {startDate&&(
         <div style={{display:"flex",background:"#111827",borderBottom:"1px solid #1E293B",position:"sticky",top:160,zIndex:9}}>
-          {[{k:"today",l:"Today"},{k:"calendar",l:"Calendar"},{k:"phases",l:"Phases"}].map(t=>(
+          {[{k:"today",l:"Today"},{k:"calendar",l:"Calendar"},{k:"phases",l:"Phases"},{k:"search",l:"Search"}].map(t=>(
             <button key={t.k} onClick={()=>{setView(t.k);if(t.k==="today"){setSelectedDay(null);setExpandedTask(null);}}} style={{
               flex:1,padding:"11px 0",border:"none",cursor:"pointer",fontFamily:m,fontSize:10.5,letterSpacing:2,textTransform:"uppercase",fontWeight:700,
               background:view===t.k?"#0B1120":"transparent",
@@ -3564,6 +3670,15 @@ function App(){
                 </button>
                 {showRef&&(
                   <div style={{background:"#0D1525",border:"1px solid #1E293B",borderTop:"none",borderRadius:"0 0 10px 10px",padding:"12px 14px"}}>
+                    <div style={{fontSize:10,fontFamily:m,color:"#64748B",letterSpacing:1,textTransform:"uppercase",marginBottom:6,fontWeight:600}}>Quick launch</div>
+                    <div style={{display:"flex",flexWrap:"wrap",gap:6,marginBottom:14}}>
+                      {PORTALS.map(p=>(
+                        <a key={p[1]} href={p[1]} target="_blank" rel="noopener noreferrer" style={{
+                          padding:"6px 10px",background:"#06B6D410",border:"1px solid #06B6D430",borderRadius:7,
+                          color:"#06B6D4",fontFamily:m,fontSize:10.5,fontWeight:700,textDecoration:"none",letterSpacing:0.3
+                        }}>{p[0]}</a>
+                      ))}
+                    </div>
                     <div style={{fontSize:11,color:"#64748B",marginBottom:10,lineHeight:1.5}}>
                       Stored only on this device. Not in the source code. Safe for identifiers, not passwords or recovery keys.
                     </div>
@@ -3572,16 +3687,16 @@ function App(){
                       {k:"tenantId",l:"Tenant ID (GUID)",ph:"1a2b3c4d-5678-90ab-cdef-1234567890ab"},
                       {k:"adminUpn",l:"Admin UPN",ph:"admin@smokkelabs.onmicrosoft.com"},
                       {k:"recoveryUsb",l:"W11 Rebuild USB location",ph:"Desk drawer, labeled"}
-                    ].map(f=>(
-                      <div key={f.k} style={{marginBottom:9}}>
-                        <div style={{fontSize:10,fontFamily:m,color:"#64748B",letterSpacing:1,textTransform:"uppercase",marginBottom:3,fontWeight:600}}>{f.l}</div>
+                    ].map(fd=>(
+                      <div key={fd.k} style={{marginBottom:9}}>
+                        <div style={{fontSize:10,fontFamily:m,color:"#64748B",letterSpacing:1,textTransform:"uppercase",marginBottom:3,fontWeight:600}}>{fd.l}</div>
                         <div style={{display:"flex",gap:6}}>
-                          <input type="text" value={labRef[f.k]||""} onChange={e=>updateRef(f.k,e.target.value)} placeholder={f.ph} style={{
+                          <input type="text" value={labRef[fd.k]||""} onChange={e=>updateRef(fd.k,e.target.value)} placeholder={fd.ph} style={{
                             flex:1,padding:"7px 10px",background:"#0B1120",border:"1px solid #1E293B",borderRadius:6,
                             color:"#E5E7EB",fontFamily:m,fontSize:12.5,outline:"none"
                           }}/>
-                          {labRef[f.k]&&(
-                            <button onClick={()=>{navigator.clipboard.writeText(labRef[f.k]).then(()=>{}).catch(()=>{});}} title="Copy to clipboard" style={{
+                          {labRef[fd.k]&&(
+                            <button onClick={()=>{navigator.clipboard.writeText(labRef[fd.k]).then(()=>{}).catch(()=>{});}} title="Copy to clipboard" style={{
                               padding:"7px 10px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:6,
                               color:"#06B6D4",fontFamily:m,fontSize:11,cursor:"pointer",fontWeight:600
                             }}>📋</button>
@@ -3680,10 +3795,10 @@ function App(){
                 )}
                 {!isDay1NothingDone&&(
                   <div style={{background:"#131B2E",border:"1px solid #1E293B",borderRadius:8,padding:"10px 12px",marginBottom:14,fontSize:11.5,color:"#94A3B8",lineHeight:1.6}}>
-                    💡 <strong style={{color:"#CBD5E1"}}>Tap any task</strong> to see step-by-step instructions, time estimate, and difficulty.
+                    💡 <strong style={{color:"#CBD5E1"}}>Tap any task</strong> for step-by-step instructions — and a notes box to log what actually happened.
                   </div>
                 )}
-                {td.tasks.map(t=><TaskItem key={t.id} task={t} accent={ph?.color}/>)}
+                {td.tasks.map(t=>renderTask(t,ph?.color))}
               </div>
             </>
           );
@@ -3773,7 +3888,7 @@ function App(){
                 {activePhase.icon} {activePhase.title}
               </div>
             )}
-            {activeDayData.tasks.map(t=><TaskItem key={t.id} task={t}/>)}
+            {activeDayData.tasks.map(t=>renderTask(t,activePhase?.color))}
 
             <button onClick={()=>setView("calendar")} style={{
               width:"100%",padding:"12px",background:"#151D2E",border:"1px solid #334155",borderRadius:9,
@@ -3781,6 +3896,62 @@ function App(){
             }}>← Back to Calendar</button>
           </>
         )}
+
+        {/* SEARCH VIEW */}
+        {startDate&&view==="search"&&(()=>{
+          const q=searchQuery.trim().toLowerCase();
+          const results=[];
+          if(q.length>=2){
+            for(const d of DAYS){
+              for(const t of d.tasks){
+                const inTitle=t.text.toLowerCase().includes(q);
+                const hit=(t.steps||[]).find(s=>s.toLowerCase().includes(q));
+                if(inTitle||hit){
+                  results.push({day:d.day,label:d.label,task:t,snippet:hit||t.text});
+                  if(results.length>=40)break;
+                }
+              }
+              if(results.length>=40)break;
+            }
+          }
+          return(
+            <>
+              <div style={{fontSize:11,fontFamily:m,color:"#64748B",letterSpacing:2,textTransform:"uppercase",marginBottom:10,fontWeight:700}}>Search all 60 days</div>
+              <input value={searchQuery} onChange={e=>setSearchQuery(e.target.value)} placeholder="BitLocker, break-glass, OData filter, TAP, error 0x87D13B9F..." style={{
+                width:"100%",boxSizing:"border-box",padding:"12px 14px",background:"#0B1120",
+                border:"1px solid #334155",borderRadius:9,color:"#E5E7EB",fontFamily:m,fontSize:13,
+                outline:"none",marginBottom:14
+              }}/>
+              {q.length<2&&(
+                <div style={{fontSize:12.5,color:"#64748B",lineHeight:1.65}}>
+                  Type at least 2 characters. Searches every task title and every instruction step across the full curriculum — error codes, cmdlets, portal paths, policy names.
+                </div>
+              )}
+              {q.length>=2&&results.length===0&&(
+                <div style={{fontSize:12.5,color:"#64748B"}}>No matches for “{searchQuery}”.</div>
+              )}
+              {q.length>=2&&results.length>0&&(
+                <div style={{fontSize:10,fontFamily:m,color:"#475569",marginBottom:10,fontWeight:600,letterSpacing:1}}>
+                  {results.length}{results.length>=40?"+":""} RESULT{results.length===1?"":"S"} — TAP TO OPEN
+                </div>
+              )}
+              {results.map((r,i)=>{
+                const c=CAT[r.task.cat];
+                return(
+                  <button key={`${r.task.id}-${i}`} onClick={()=>{setSelectedDay(r.day);setView("day");setExpandedTask(r.task.id);}} style={{
+                    display:"block",width:"100%",textAlign:"left",padding:"11px 13px",marginBottom:7,
+                    background:"#151D2E",border:"1px solid #1E293B",borderLeft:`3px solid ${c.color}55`,
+                    borderRadius:9,cursor:"pointer"
+                  }}>
+                    <div style={{fontSize:10,fontFamily:m,color:c.color,fontWeight:700,letterSpacing:0.5,marginBottom:3}}>DAY {r.day} · {r.label.toUpperCase()}</div>
+                    <div style={{fontSize:13,color:"#E5E7EB",fontWeight:600,fontFamily:f,marginBottom:3,lineHeight:1.4}}>{r.task.text}</div>
+                    <div style={{fontSize:11.5,color:"#94A3B8",fontFamily:f,lineHeight:1.5,overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>{r.snippet.replace(/^## /,"")}</div>
+                  </button>
+                );
+              })}
+            </>
+          );
+        })()}
 
         {/* PHASES VIEW */}
         {startDate&&view==="phases"&&(
@@ -3931,7 +4102,14 @@ function App(){
   );
 }
 
-ReactDOM.render(<App/>,document.getElementById("root"));
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  });
+}
 </script>
 </body>
 </html>
