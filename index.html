@@ -3097,7 +3097,7 @@ const TaskItem = React.memo(({ task, accent, done, prereqDone, isExp, onToggle, 
 const GIST_FILE = "sprint-progress.json";
 const GIST_DESCRIPTION = "Security Engineering Sprint — progress (private)";
 const SYNC_DEBOUNCE_MS = 2500;
-const SNAPSHOT_VERSION = 2; // v1: completed/habitLog/startDate/labRef · v2: + notes
+const SNAPSHOT_VERSION = 3; // v1: completed/habitLog/startDate/labRef · v2: + notes · v3: + notesAt (per-note edit timestamps)
 
 const gistFetch = async (token, path, opts = {}) => {
   const res = await fetch(`https://api.github.com${path}`, {
@@ -3148,7 +3148,8 @@ const buildSnapshot = (data) => JSON.stringify({
   habitLog: data.habitLog || {},
   startDate: data.startDate || null,
   labRef: data.labRef || EMPTY_LABREF,
-  notes: data.notes || {}
+  notes: data.notes || {},
+  notesAt: data.notesAt || {}
 }, null, 2);
 
 const parseSnapshot = (content) => {
@@ -3161,19 +3162,23 @@ const parseSnapshot = (content) => {
     habitLog: data.habitLog || {},
     startDate: data.startDate || null,
     labRef: data.labRef || EMPTY_LABREF,
-    notes: data.notes || {}
+    notes: data.notes || {},
+    notesAt: data.notesAt || {}
   };
 };
 
 // Merge local + remote instead of wholesale replace. Rules:
-// completed/notes: per-key, local wins on conflict (protects work done offline
-//   on THIS device; keys only present remotely are kept).
+// completed: per-key union, local wins on conflict — done-flags can't be lost.
 // habitLog: per-day inner merge, local wins per habit.
 // startDate: keep local if set, else adopt remote.
 // labRef: per-field, local non-empty value wins, else remote fills the gap.
-// Known edge: editing the SAME task's note on two offline devices — the device
-// that syncs last wins for that note. Done-flags can't be lost, only notes text
-// in that specific double-edit case.
+// notes (v3): per-task NEWER-EDIT-WINS via notesAt timestamps. A missing
+//   timestamp counts as 0 (pre-v3 data); on a tie, local wins and a note
+//   present on only one side is kept — both matching pre-v3 behavior.
+//   Deleting a note keeps its notesAt entry as a tombstone, so deletions
+//   replicate instead of being resurrected by the other device.
+//   Residual limit: timestamps come from device clocks, so severe clock skew
+//   between devices could pick the wrong side of a same-note conflict.
 const mergeSnapshots = (local, remote) => {
   const habitLog = { ...remote.habitLog };
   for (const day in (local.habitLog || {})) {
@@ -3183,17 +3188,40 @@ const mergeSnapshots = (local, remote) => {
   for (const k in (local.labRef || {})) {
     if (local.labRef[k]) labRef[k] = local.labRef[k];
   }
+  const notes = {};
+  const notesAt = {};
+  const noteIds = new Set([
+    ...Object.keys(local.notes || {}), ...Object.keys(remote.notes || {}),
+    ...Object.keys(local.notesAt || {}), ...Object.keys(remote.notesAt || {})
+  ]);
+  for (const id of noteIds) {
+    const lt = Date.parse(local.notesAt?.[id] || "") || 0;
+    const rt = Date.parse(remote.notesAt?.[id] || "") || 0;
+    const winner = rt > lt ? remote : local;           // tie -> local
+    const wt = Math.max(lt, rt);
+    if (winner.notes?.[id] !== undefined) {
+      notes[id] = winner.notes[id];
+    } else if (wt === 0) {
+      // No timestamp info anywhere (pure pre-v3 data): presence wins,
+      // matching the old spread behavior — never drop an untimestamped note.
+      const other = winner === local ? remote : local;
+      if (other.notes?.[id] !== undefined) notes[id] = other.notes[id];
+    }
+    // wt > 0 with winner's note absent = genuine tombstone: stays deleted.
+    if (wt > 0) notesAt[id] = new Date(wt).toISOString();
+  }
   return {
     completed: { ...(remote.completed || {}), ...(local.completed || {}) },
     habitLog,
     startDate: local.startDate || remote.startDate || null,
     labRef,
-    notes: { ...(remote.notes || {}), ...(local.notes || {}) }
+    notes,
+    notesAt
   };
 };
 
 const snapshotKey = (s) => JSON.stringify({
-  c: s.completed, h: s.habitLog, s: s.startDate, l: s.labRef, n: s.notes
+  c: s.completed, h: s.habitLog, s: s.startDate, l: s.labRef, n: s.notes, na: s.notesAt
 });
 
 const fmtRelative = (iso) => {
@@ -3286,7 +3314,44 @@ function useGistSync({ snapshot, applyRemote }) {
     }
   }, [cfg, applyRemote]);
 
+  // Re-sync when connectivity returns or the tab becomes visible again, so an
+  // offline editing session pushes without needing another edit or a manual tap.
+  // Visibility-driven syncs are throttled (60s) to avoid hammering the Gist API
+  // on rapid tab switches; reconnects use a short 5s guard against event bursts.
+  const lastAutoRef = React.useRef(0);
+  useEffect(() => {
+    if (!cfg?.enabled) return;
+    const auto = (minGapMs) => {
+      const now = Date.now();
+      if (now - lastAutoRef.current < minGapMs) return;
+      lastAutoRef.current = now;
+      syncNow();
+    };
+    const onOnline = () => auto(5000);
+    const onVisible = () => { if (document.visibilityState === "visible") auto(60000); };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [cfg?.enabled, syncNow]);
+
   return { cfg, updateCfg, status, syncNow, hydrated };
+}
+
+function BackupNudge({ lastExport, onExport, onDismiss }) {
+  const m = M_FONT;
+  return (
+    <div role="status" style={{display:"flex",alignItems:"center",gap:10,background:"#1C1917",border:"1px solid #F59E0B40",borderRadius:10,padding:"10px 12px",marginBottom:16}}>
+      <span aria-hidden="true" style={{fontSize:14}}>💾</span>
+      <span style={{flex:1,fontSize:11,fontFamily:m,color:"#FCD34D",lineHeight:1.5}}>
+        No cloud sync on this device · last manual backup: {lastExport ? fmtRelative(lastExport) : "never"}
+      </span>
+      <button onClick={onExport} aria-label="Copy a backup of your progress now" style={{background:"#F59E0B",border:"none",borderRadius:7,color:"#1C1917",fontSize:10.5,fontWeight:700,fontFamily:m,padding:"7px 10px",cursor:"pointer",letterSpacing:0.5}}>BACK UP</button>
+      <button onClick={onDismiss} aria-label="Dismiss backup reminder" style={{background:"transparent",border:"none",color:"#78716C",fontSize:14,cursor:"pointer",padding:"2px 4px"}}>✕</button>
+    </div>
+  );
 }
 
 function SyncBadge({ status, cfg, onClick }) {
@@ -3473,6 +3538,9 @@ function App(){
   const[startDate,setStartDate]=useState(()=>LS.get("se-start"));
   const[labRef,setLabRef]=useState(()=>LS.get("se-ref")||{tenantId:"",tenantDomain:"",adminUpn:"",recoveryUsb:""});
   const[notes,setNotes]=useState(()=>LS.get("se-notes")||{});
+  const[notesAt,setNotesAt]=useState(()=>LS.get("se-notesat")||{});
+  const[lastExport,setLastExport]=useState(()=>LS.get("se-exported")||null);
+  const[nudgeHidden,setNudgeHidden]=useState(false);
   const[selectedDay,setSelectedDay]=useState(null);
   const[view,setView]=useState("today");
   const[expandedTask,setExpandedTask]=useState(null);
@@ -3484,12 +3552,12 @@ function App(){
   const todayKey=localDateKey();
   const toggleHabit=useCallback(id=>{setHabitLog(p=>{const dh=p[todayKey]||{};const n={...p,[todayKey]:{...dh,[id]:!dh[id]}};LS.set("se-hab",n);return n;});},[todayKey]);
   const start=useCallback(()=>{setStartDate(todayKey);LS.set("se-start",todayKey);},[todayKey]);
-  const reset=useCallback(()=>{if(!confirm("Reset all progress, habits, and lab notes? Lab Reference values are kept. This cannot be undone."))return;setCompleted({});setHabitLog({});setStartDate(null);setNotes({});setView("today");LS.del("se-done");LS.del("se-hab");LS.del("se-start");LS.del("se-notes");},[]);
+  const reset=useCallback(()=>{if(!confirm("Reset all progress, habits, and lab notes? Lab Reference values are kept. This cannot be undone."))return;setCompleted({});setHabitLog({});setStartDate(null);setNotes({});setNotesAt({});setView("today");LS.del("se-done");LS.del("se-hab");LS.del("se-start");LS.del("se-notes");LS.del("se-notesat");},[]);
 
-  const updateNote=useCallback((id,val)=>{setNotes(p=>{const n={...p};if(val)n[id]=val;else delete n[id];LS.set("se-notes",n);return n;});},[]);
+  const updateNote=useCallback((id,val)=>{const ts=new Date().toISOString();setNotes(p=>{const n={...p};if(val)n[id]=val;else delete n[id];LS.set("se-notes",n);return n;});setNotesAt(p=>{const n={...p,[id]:ts};LS.set("se-notesat",n);return n;});},[]);
 
-  const snapshot = React.useMemo(() => ({ completed, habitLog, startDate, labRef, notes }),
-    [completed, habitLog, startDate, labRef, notes]);
+  const snapshot = React.useMemo(() => ({ completed, habitLog, startDate, labRef, notes, notesAt }),
+    [completed, habitLog, startDate, labRef, notes, notesAt]);
 
   const applyRemote = useCallback((remote) => {
     setCompleted(remote.completed); LS.set("se-done", remote.completed);
@@ -3497,6 +3565,7 @@ function App(){
     if (remote.startDate) { setStartDate(remote.startDate); LS.set("se-start", remote.startDate); }
     if (remote.labRef) { setLabRef(remote.labRef); LS.set("se-ref", remote.labRef); }
     setNotes(remote.notes || {}); LS.set("se-notes", remote.notes || {});
+    setNotesAt(remote.notesAt || {}); LS.set("se-notesat", remote.notesAt || {});
   }, []);
 
   const sync = useGistSync({ snapshot, applyRemote });
@@ -3510,14 +3579,17 @@ function App(){
   const updateRef=useCallback((field,value)=>{setLabRef(p=>{const n={...p,[field]:value};LS.set("se-ref",n);return n;});},[]);
 
   const exportProgress=useCallback(()=>{
-    const data={version:SNAPSHOT_VERSION,exported:new Date().toISOString(),completed,habitLog,startDate,labRef,notes};
+    const data={version:SNAPSHOT_VERSION,exported:new Date().toISOString(),completed,habitLog,startDate,labRef,notes,notesAt};
     const json=JSON.stringify(data,null,2);
+    const stamp=()=>{const now=new Date().toISOString();setLastExport(now);LS.set("se-exported",now);};
     navigator.clipboard.writeText(json).then(()=>{
+      stamp();
       alert("Progress copied to clipboard. On your other device: open this same site → Phases → Import Progress → paste.");
     }).catch(()=>{
       prompt("Copy this text and paste it on your other device:",json);
+      stamp();
     });
-  },[completed,habitLog,startDate,labRef,notes]);
+  },[completed,habitLog,startDate,labRef,notes,notesAt]);
 
   const importProgress=useCallback(()=>{
     const json=prompt("Paste the progress JSON from your other device:");
@@ -3532,6 +3604,7 @@ function App(){
       if(data.startDate){setStartDate(data.startDate);LS.set("se-start",data.startDate);}
       if(data.labRef){setLabRef(data.labRef);LS.set("se-ref",data.labRef);}
       setNotes(data.notes||{});LS.set("se-notes",data.notes||{});
+      setNotesAt(data.notesAt||{});LS.set("se-notesat",data.notesAt||{});
       alert("Imported successfully.");
     }catch(e){alert("Could not import that JSON. Make sure you copied the full export from an app version at least as new as this one.");}
   },[]);
@@ -3628,7 +3701,7 @@ function App(){
       {/* NAV TABS */}
       {startDate&&(
         <div style={{display:"flex",background:"#111827",borderBottom:"1px solid #1E293B",position:"sticky",top:160,zIndex:9}}>
-          {[{k:"today",l:"Today"},{k:"calendar",l:"Calendar"},{k:"phases",l:"Phases"},{k:"search",l:"Search"}].map(t=>(
+          {[{k:"today",l:"Today"},{k:"calendar",l:"Calendar"},{k:"phases",l:"Phases"},{k:"search",l:"Search"},{k:"stats",l:"Stats"}].map(t=>(
             <button key={t.k} onClick={()=>{setView(t.k);if(t.k==="today"){setSelectedDay(null);setExpandedTask(null);}}} style={{
               flex:1,padding:"11px 0",border:"none",cursor:"pointer",fontFamily:m,fontSize:10.5,letterSpacing:2,textTransform:"uppercase",fontWeight:700,
               background:view===t.k?"#0B1120":"transparent",
@@ -3641,6 +3714,12 @@ function App(){
 
       {/* MAIN CONTENT */}
       <div style={{padding:"18px 18px 120px"}}>
+
+        {/* BACKUP NUDGE — only when: sprint started, no Gist sync configured,
+            real progress exists, and no manual backup in the last 7 days */}
+        {startDate&&!sync.cfg&&!nudgeHidden&&doneTasks>0&&(!lastExport||Date.now()-new Date(lastExport).getTime()>7*86400000)&&(
+          <BackupNudge lastExport={lastExport} onExport={exportProgress} onDismiss={()=>setNudgeHidden(true)}/>
+        )}
 
         {/* TODAY VIEW */}
         {startDate&&view==="today"&&(()=>{
@@ -3957,6 +4036,62 @@ function App(){
                 );
               })}
             </>
+          );
+        })()}
+
+        {/* STATS VIEW */}
+        {startDate&&view==="stats"&&(()=>{
+          const elapsed=Math.min(dayNum,60);
+          const remaining=totalTasks-doneTasks;
+          const avgPace=elapsed>0?doneTasks/elapsed:0;
+          const reqPace=dayNum>60?remaining:remaining/Math.max(1,60-dayNum+1);
+          const projDate=avgPace>0?new Date(fromDateKey(startDate).getTime()+(Math.ceil(totalTasks/avgPace)-1)*86400000):null;
+          const endDate=new Date(fromDateKey(startDate).getTime()+59*86400000);
+          const fmtDate=d=>d.toLocaleDateString(undefined,{month:"short",day:"numeric"});
+          const onTrack=projDate?projDate<=endDate:false;
+          const phaseStats=PHASES.map(p=>{
+            const ts=DAYS.filter(d=>d.day>=p.days[0]&&d.day<=p.days[1]).flatMap(d=>d.tasks);
+            return{...p,total:ts.length,done:ts.filter(t=>completed[t.id]).length};
+          });
+          const last14=[...Array(14)].map((_,i)=>{
+            const k=localDateKey(new Date(Date.now()-(13-i)*86400000));
+            return{k,n:Object.values(habitLog[k]||{}).filter(Boolean).length};
+          });
+          const card=(label,value,sub,color)=>(
+            <div style={{background:"#151D2E",borderRadius:12,padding:"14px 12px",border:`1px solid ${color}25`}}>
+              <div style={{fontSize:9,color:"#64748B",fontFamily:m,letterSpacing:1.5,textTransform:"uppercase",fontWeight:600}}>{label}</div>
+              <div style={{fontSize:21,fontWeight:800,fontFamily:m,color:color,marginTop:4,lineHeight:1}}>{value}</div>
+              {sub&&<div style={{fontSize:10,color:"#475569",fontFamily:m,marginTop:5,lineHeight:1.4}}>{sub}</div>}
+            </div>
+          );
+          return(
+            <div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10,marginBottom:18}}>
+                {card("Current pace",`${avgPace.toFixed(1)}/day`,`${doneTasks} done in ${elapsed} day${elapsed===1?"":"s"}`,"#06B6D4")}
+                {card("Required pace",dayNum>60?`${remaining} left`:`${reqPace.toFixed(1)}/day`,dayNum>60?"past day 60":`${remaining} left · ${Math.max(0,60-dayNum+1)} days to go`,"#8B5CF6")}
+                {card("Projected finish",projDate?fmtDate(projDate):"—",projDate?(onTrack?"on track":"behind target pace"):"complete tasks to project",projDate?(onTrack?"#10B981":"#F59E0B"):"#475569")}
+                {card("Day 60 lands",fmtDate(endDate),"sprint target date","#64748B")}
+              </div>
+              <div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:2,textTransform:"uppercase",fontWeight:700,marginBottom:8}}>Phase progress</div>
+              {phaseStats.map((p,i)=>(
+                <div key={i} style={{background:"#151D2E",borderRadius:12,padding:12,border:`1px solid ${p.color}25`,marginBottom:10}}>
+                  <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:7}}>
+                    <span style={{fontSize:12,fontWeight:700,color:"#CBD5E1"}}>{p.icon} {p.title}</span>
+                    <span style={{fontSize:11,fontFamily:m,fontWeight:700,color:p.color}}>{p.done}/{p.total}</span>
+                  </div>
+                  <div style={{height:6,background:"#1E293B",borderRadius:3,overflow:"hidden"}}>
+                    <div style={{height:"100%",width:`${p.total?Math.round(p.done/p.total*100):0}%`,background:p.color,borderRadius:3,transition:"width 0.5s"}}/>
+                  </div>
+                </div>
+              ))}
+              <div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:2,textTransform:"uppercase",fontWeight:700,margin:"18px 0 8px"}}>Habits · last 14 days</div>
+              <div style={{display:"flex",gap:5,flexWrap:"wrap"}} role="img" aria-label="Habit completion for the last 14 days">
+                {last14.map((d,i)=>(
+                  <div key={i} title={`${d.k}: ${d.n}/3 habits`} style={{width:20,height:20,borderRadius:5,background:d.n===3?"#10B981":d.n===2?"#10B98170":d.n===1?"#10B98135":"#1E293B",border:"1px solid #1E293B"}}/>
+                ))}
+              </div>
+              <div style={{fontSize:9.5,color:"#475569",fontFamily:m,marginTop:14,lineHeight:1.5}}>Pace counts calendar days since your start date. Projection assumes the current average holds.</div>
+            </div>
           );
         })()}
 

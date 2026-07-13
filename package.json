@@ -1,0 +1,19 @@
+{
+  "name": "se-sprint-tracker",
+  "version": "4.2.0",
+  "private": true,
+  "description": "60-day Security Engineering Sprint tracker - single-file React PWA with a precompile pipeline",
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build/build.js",
+    "verify": "node build/verify.js && node build/merge.test.js && node build/render.test.js"
+  },
+  "dependencies": {
+    "@babel/standalone": "7.23.9"
+  },
+  "devDependencies": {
+    "jsdom": "29.1.1"
+  }
+}
