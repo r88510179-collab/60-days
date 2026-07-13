@@ -21,6 +21,7 @@ button{font-family:inherit}
 <div id="root"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.3/dist/umd/supabase.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script type="text/babel">
 const {useState,useEffect,useCallback}=React;
@@ -1112,6 +1113,24 @@ const DAYS=[
       "## Interview connection",
       "Be able to explain why you'd use a filter instead of creating multiple dynamic groups"
     ]},
+    {id:"d15t3",text:"Deploy Microsoft 365 Apps with ODT/OCT + explore the Apps admin center",cat:"lab",icon:"📦",time:"~45 min",diff:2,steps:[
+      "## Why this task now",
+      "The current MD-102 outline (April 28, 2026) explicitly tests deploying Microsoft 365 Apps with the Office Deployment Tool (ODT) / Office Customization Tool (OCT) and managing them via the Apps admin center — a gap in this sprint until now. It pairs naturally with today's assignment/targeting work.",
+      "## Build a config with the Office Customization Tool",
+      "Go to https://config.office.com and sign in with your admin account",
+      "Left nav → Device Configuration → Customization → Create — pick 64-bit, Current Channel, exclude apps you don't need (e.g., Publisher)",
+      "Click Export → 'Keep Current Settings' → name it and download the XML — open it and read every element; the exam shows you raw XML",
+      "## Deploy via ODT (on the Surface or a VM)",
+      "Download the Office Deployment Tool from https://learn.microsoft.com/microsoft-365-apps/deploy/overview-office-deployment-tool",
+      "Extract, place your XML next to setup.exe, then run: setup.exe /download config.xml and setup.exe /configure config.xml",
+      "## Explore the Apps admin center",
+      "Back at config.office.com → Servicing → review update channels; Security → open the Security Policy Advisor",
+      "Understand the split: Intune deploys the app suite; the Apps admin center manages servicing, channels, and Office policies",
+      "## Watch for",
+      "setup.exe with no output usually means the XML has a schema typo — validate element names against the docs, they're case-sensitive",
+      "## What you learned",
+      "ODT XML structure, OCT-driven config, channel/servicing management — the exact 'Deploy Microsoft 365 Apps' bullets from the exam outline"
+    ]},
   ]},
   {day:16,label:"PowerShell + Microsoft Graph",tasks:[
     {id:"d16t1",text:"Query devices via Microsoft Graph",cat:"lab",icon:"⌨️",time:"~45 min",diff:2,prereq:"d3t1",steps:[
@@ -1395,6 +1414,23 @@ const DAYS=[
       "## Integration",
       "Intune logs can forward to Log Analytics / Microsoft Sentinel for SIEM correlation"
     ]},
+    {id:"d19t3",text:"Onboard the Surface into Defender for Business + run a detection test",cat:"lab",icon:"🛡️",time:"~45 min",diff:3,steps:[
+      "## Why this task now",
+      "MD-102 'Protect devices' expects you to integrate Intune with Microsoft Defender for Endpoint and onboard devices. Business Premium includes Defender for Business (the SMB edition of MDE), so this is fully hands-on at no extra cost — and it fits today's monitoring theme.",
+      "## Connect Intune and Defender",
+      "Go to https://security.microsoft.com → Settings → Endpoints → Advanced features — confirm 'Microsoft Intune connection' is On",
+      "Then https://intune.microsoft.com → Endpoint security → Microsoft Defender for Endpoint — verify the connection status shows Available, and enable the compliance/app-protection toggles for Windows",
+      "## Onboard via policy",
+      "Intune → Endpoint security → Endpoint detection and response → Create policy (Windows, EDR profile) — the onboarding blob comes from the service connection automatically; assign to your device group",
+      "On the Surface, confirm the 'sense' service is running: Get-Service sense",
+      "## Prove it works",
+      "Run the standard MDE detection test command from https://learn.microsoft.com/defender-business/ (Onboard devices → run a detection test) in a terminal on the Surface",
+      "In security.microsoft.com → Assets → Devices, find the Surface; open the timeline and locate your test alert",
+      "## Watch for",
+      "A device stuck 'Can be onboarded' usually means the EDR policy hasn't applied yet — check Intune device status and sync manually",
+      "## What you learned",
+      "The Intune↔MDE service connection, EDR onboarding policy flow, and where alerts/device timelines live — the 'Integrate and onboard' exam bullets"
+    ]},
   ]},
   {day:20,label:"Mid-Phase Review",tasks:[
     {id:"d20t1",text:"Document all Intune policies created so far",cat:"review",icon:"📝",time:"~45 min",diff:1,steps:[
@@ -1470,6 +1506,20 @@ const DAYS=[
       "'A user's laptop was stolen — walk me through what you do'",
       "Correct answer: Wipe + revoke sessions in Entra + rotate BitLocker recovery key"
     ]},
+    {id:"d22t3",text:"Device query with KQL — remote-action superpower",cat:"lab",icon:"🔎",time:"~30 min",diff:2,steps:[
+      "## Why this task now",
+      "'Run a device query by using KQL' was added to MD-102's Perform-remote-actions section in the April 2026 refresh. KQL also shows up in SC-300 monitoring and every SOC job description, so the syntax investment pays three times.",
+      "## Learn the shape of KQL",
+      "Core pattern: TableName | where Condition | project Columns | order by Column",
+      "On-device query tables include Process, File, Registry, LocalUserAccount, WindowsEvent and more",
+      "## Try it (license note)",
+      "Device query lives under Intune Advanced Analytics (an Intune Suite add-on). If you started the Intune Suite trial from day 26's task, open https://intune.microsoft.com → Devices → select the Surface → Device query, and run: Process | where Name contains \"powershell\" | project Name, ProcessId",
+      "No trial? Work the documented examples instead at https://learn.microsoft.com/mem/analytics/device-query — the exam tests the query concepts, not your license",
+      "## Practice three queries on paper",
+      "1) local admin accounts via LocalUserAccount, 2) files in C:\\Temp via File, 3) autoruns via Registry — write each, then check against the docs' samples",
+      "## What you learned",
+      "KQL's pipe-and-operator model and where device query sits in the remote-actions toolbox — plus a head start on SC-300's Log Analytics KQL"
+    ]},
   ]},
   {day:23,label:"Cloud Desktops Concepts",tasks:[
     {id:"d23t1",text:"Study Windows 365 Cloud PC and Azure Virtual Desktop",cat:"study",icon:"☁️",time:"~30 min",diff:1,steps:[
@@ -1515,6 +1565,22 @@ const DAYS=[
       "Client agent installation and conflict resolution",
       "Migration strategy and endgame (full cloud-native Intune)",
       "## Complete the knowledge check"
+    ]},
+    {id:"d24t3",text:"Delivery Optimization policy + build a provisioning package",cat:"lab",icon:"🚚",time:"~35 min",diff:2,steps:[
+      "## Why this task now",
+      "Two thin spots in one task: MD-102 tests configuring Windows Delivery Optimization via Intune and choosing/creating provisioning packages as an Autopilot alternative. Both are quick hands-on wins in your tenant.",
+      "## Delivery Optimization via Intune",
+      "https://intune.microsoft.com → Devices → Configuration → Create → New policy → Windows → Settings catalog",
+      "Search the picker for 'Delivery Optimization' → set Download Mode to 'HTTP blended with peering behind same NAT (1)', assign to your device group",
+      "Read what each download mode number means at https://learn.microsoft.com/windows/deployment/do/waas-delivery-optimization — the exam loves the mode-number-to-behavior mapping",
+      "## Build a provisioning package",
+      "Install Windows Configuration Designer from the Microsoft Store on the Surface",
+      "New project → 'Provision desktop devices' — set a device name pattern, skip account creation, export the .ppkg (note it can embed a local admin + Wi-Fi + enrollment token)",
+      "Don't apply it to your managed Surface — the point is knowing WHEN a .ppkg beats Autopilot (offline/bulk/kiosk scenarios) and what's inside one",
+      "## Watch for",
+      "Settings catalog search returns device AND user scoped duplicates — pick the device-scope setting or the policy may not apply",
+      "## What you learned",
+      "DO download modes and peering, plus the provisioning-package decision criteria the 'Choose between Autopilot and provisioning packages' bullet tests"
     ]},
   ]},
   {day:25,label:"Applied Skills — Intune Credential",tasks:[
@@ -1562,6 +1628,24 @@ const DAYS=[
       "## Interpret results",
       "This tells you what you know vs what still needs study",
       "The paid $165 exam is optional — practice scores are proof enough for interview purposes"
+    ]},
+    {id:"d26t3",text:"Intune Suite add-ons — use-case mapping (EPM, EAC, Advanced Analytics, Remote Help, Cloud PKI, Tunnel)",cat:"study",icon:"🧩",time:"~40 min",diff:2,steps:[
+      "## Why this task now",
+      "The April 2026 MD-102 refresh added a whole subsection: 'Implement Intune Suite add-on capabilities.' Business Premium doesn't include the Suite, but the exam mostly tests WHICH tool solves WHICH problem — and a free trial exists if you want hands-on.",
+      "## Build a one-line use-case map (write these in your lab notes)",
+      "Endpoint Privilege Management → remove local admin, elevate single apps on approval (support elevation without admin accounts)",
+      "Enterprise App Catalog → prepackaged Win32 apps with managed updates (no manual .intunewin packaging)",
+      "Advanced Analytics → device query (KQL), anomaly detection, battery health, enhanced device timeline",
+      "Remote Help → identity-verified, RBAC-controlled remote assistance with compliance warnings",
+      "Cloud PKI → issue/manage certificates from Intune without on-prem AD CS/NDES — know its use cases, that's the literal exam bullet",
+      "Microsoft Tunnel for MAM → per-app VPN to on-prem resources for UNENROLLED devices (MAM-only)",
+      "Read the official one-pager: https://learn.microsoft.com/mem/intune/fundamentals/intune-add-ons",
+      "## Optional hands-on",
+      "Intune admin center → Tenant administration → Intune add-ons — start the Intune Suite trial, then create one EPM elevation-settings policy and open Remote Help to see the operator flow",
+      "## Drill",
+      "For each of the six, say aloud: the problem it solves, the licensing unit, and one exam-style scenario where it's the right answer",
+      "## What you learned",
+      "The complete Intune Suite subsection the current exam tests — as a decision matrix, which is how the questions are framed"
     ]},
   ]},
   {day:27,label:"Lab Documentation",tasks:[
@@ -1691,6 +1775,25 @@ const DAYS=[
       "Select 2–3 countries you'd never expect legitimate sign-ins from",
       "## Purpose",
       "Named Locations are building blocks — referenced by CA policies in Day 32"
+    ]},
+    {id:"d31t3",text:"Enable and test self-service password reset (SSPR) end-to-end",cat:"lab",icon:"🔑",time:"~35 min",diff:2,steps:[
+      "## Why this task now",
+      "SSPR is a named SC-300 objective ('Configure and deploy self-service password reset') that this sprint hadn't touched — and it's a pure Entra ID P1 feature, fully included in your tenant. Perfect fit for authentication kickoff day.",
+      "## Enable it",
+      "https://entra.microsoft.com → Entra ID → Password reset (under Manage)",
+      "Properties → Self service password reset enabled: Selected → pick a pilot group (create 'SSPR-Pilot' with your test user)",
+      "Authentication methods → require 1 method for the lab; note the exam's default recommendation is 2",
+      "Registration → require users to register at sign-in: Yes; Notifications → notify admins on admin-password reset: Yes — know WHY (detecting admin account takeover)",
+      "## Test the loop",
+      "InPrivate window → https://aka.ms/ssprsetup as the test user → register methods",
+      "Then https://aka.ms/sspr → complete a reset; watch the combined registration experience do its thing",
+      "## Verify in logs",
+      "Entra → Monitoring → Audit logs → filter Service = 'Self-service Password Management' — find your reset events",
+      "Docs: https://learn.microsoft.com/entra/identity/authentication/tutorial-enable-sspr",
+      "## Watch for",
+      "SSPR 'Selected' scope only reads direct+nested group membership — a user outside the pilot group sees 'contact your admin', which is also a favorite exam troubleshooting question",
+      "## What you learned",
+      "SSPR scoping, method policy, combined registration, writeback awareness, and the audit trail — the full exam bullet"
     ]},
   ]},
   {day:32,label:"Conditional Access — First Policies",tasks:[
@@ -1859,6 +1962,23 @@ const DAYS=[
       "Legacy auth (basic auth, POP, IMAP without OAuth) bypasses MFA",
       "Blocking it is the single highest-impact security policy most tenants can enable",
       "## Report-only first, then enable"
+    ]},
+    {id:"d33t3",text:"Authentication context + protected actions — CA beyond apps",cat:"lab",icon:"🎯",time:"~40 min",diff:3,steps:[
+      "## Why this task now",
+      "Two April-2026 SC-300 bullets with zero prior coverage: 'Configure authentication context' and 'Implement protected actions.' Both extend today's Conditional Access work from apps to ACTIONS.",
+      "## Create an authentication context",
+      "https://entra.microsoft.com → Entra ID → Conditional Access → Authentication contexts → New — name it 'Sensitive operations' (note the c-number ID it gets)",
+      "New CA policy → Users: your test group → Target resources: Authentication context → pick 'Sensitive operations' → Grant: require multifactor authentication → On",
+      "## Bind it to a protected action",
+      "Entra ID → Roles & administrators → Protected actions (under the Conditional Access section of role settings) → Add protected actions",
+      "Select the Conditional Access permission set (microsoft.directory/conditionalAccessPolicies/*) and bind it to your authentication context",
+      "## Prove the step-up",
+      "As a test admin WITHOUT a fresh MFA claim, try to create/modify a CA policy — you get an interactive MFA step-up prompt before the action is allowed",
+      "Docs: https://learn.microsoft.com/entra/identity/role-based-access-control/protected-actions-overview",
+      "## Watch for",
+      "Protected actions require the acting admin be in scope of the CA policy targeting the context — misscoped users get blocked outright instead of stepped up",
+      "## What you learned",
+      "Authentication context as a taggable sensitivity label for resources AND actions, and protected actions as step-up auth for directory permissions — exactly how the exam frames them"
     ]},
   ]},
   {day:34,label:"Authentication Methods",tasks:[
@@ -2069,6 +2189,21 @@ const DAYS=[
       "## Overlap note",
       "Risk-based CA policies and Identity Protection risk policies cover similar ground — know when to use which"
     ]},
+    {id:"d36t3",text:"Run an MFA registration campaign (Authenticator nudge)",cat:"lab",icon:"📣",time:"~25 min",diff:2,steps:[
+      "## Why this task now",
+      "'Implement and manage MFA registration by using authentication methods and registration campaigns' is a current SC-300 bullet — a small feature the exam likes because it sits at the intersection of ID Protection and authentication methods. Fits today's Identity Protection theme.",
+      "## Configure the campaign",
+      "https://entra.microsoft.com → Entra ID → Authentication methods → Registration campaign",
+      "State: Enabled → Days allowed to snooze: 3 (know the range 0–14, and that 0 = mandatory, no snooze)",
+      "Include: your pilot group; note the exclusion list exists for break-glass accounts — always exclude them",
+      "## Understand the trigger conditions",
+      "The nudge fires at sign-in only for users who are enabled for Microsoft Authenticator push but not yet registered, and only on browser sign-ins that already passed MFA via another method",
+      "Docs: https://learn.microsoft.com/entra/identity/authentication/how-to-mfa-registration-campaign",
+      "## Test",
+      "Sign in as a pilot user with SMS-based MFA and no Authenticator — you get the 'Improve your sign-ins' interrupt; snooze it, then check Authentication methods → Activity for registration telemetry",
+      "## What you learned",
+      "How Microsoft drives users from weak MFA to Authenticator at scale, the snooze mechanics, and the break-glass exclusion pattern"
+    ]},
   ]},
   {day:37,label:"Application Management & SSO",tasks:[
     {id:"d37t1",text:"Configure a SAML SSO app integration",cat:"lab",icon:"🔗",time:"~45 min",diff:3,prereq:"d1t2",steps:[
@@ -2205,6 +2340,22 @@ const DAYS=[
       "## Strong interview answer",
       "'How would you handle identity lifecycle at scale?' — walk through the Leaver workflow from Day 40 lab"
     ]},
+    {id:"d40t3",text:"Administrative units + custom security attributes",cat:"lab",icon:"🗂️",time:"~40 min",diff:2,steps:[
+      "## Why this task now",
+      "Both are named SC-300 objectives with zero prior coverage, both are pure tenant features you already have, and both are governance primitives — a natural extension of lifecycle day.",
+      "## Administrative units: scoped admin",
+      "https://entra.microsoft.com → Entra ID → Administrative units → New — create 'Florida-Office', add your test users",
+      "On the AU → Roles and administrators → assign User Administrator to a test admin SCOPED TO THIS AU only",
+      "Prove the scope: as that admin, reset a password for a user inside the AU (works), then try one outside (fails) — that failure is the whole point",
+      "Note restricted management AUs exist: even Global Admins can't modify members unless explicitly assigned at the AU — a favorite exam distinction",
+      "Docs: https://learn.microsoft.com/entra/identity/role-based-access-control/administrative-units",
+      "## Custom security attributes",
+      "Entra ID → Custom security attributes → Add attribute set 'Sprint' → add attribute 'CostCenter' (String, predefined values CC100/CC200)",
+      "Assign a value to your test user (user → Custom security attributes blade)",
+      "Know the security model: reading/writing these needs the Attribute-specific roles (e.g., Attribute Assignment Administrator) — Global Admin alone does NOT see values by default",
+      "## What you learned",
+      "Delegation by organizational boundary (AUs) and sensitive metadata with its own RBAC plane (custom security attributes) — both exam bullets, both now in your lab"
+    ]},
   ]},
   {day:41,label:"Monitoring & Sign-in Logs",tasks:[
     {id:"d41t1",text:"Investigate sign-in logs in Entra",cat:"lab",icon:"🔍",time:"~30 min",diff:2,prereq:"d32t1",steps:[
@@ -2232,6 +2383,24 @@ const DAYS=[
       "Entra retains 30 days by default — export to Log Analytics or Sentinel for long-term",
       "## Investigation flow",
       "Alert → pivot to sign-in logs → filter by user/IP/app → identify risk signals → confirm compromise → remediate (revoke sessions, reset password, require MFA re-registration)"
+    ]},
+    {id:"d41t3",text:"Ship sign-in logs to Log Analytics + build a workbook + first KQL",cat:"lab",icon:"📊",time:"~45 min",diff:3,steps:[
+      "## Why this task now",
+      "SC-300's monitoring section tests diagnostic settings, Log Analytics, KQL queries, and workbooks — the sprint covered reading sign-in logs in the portal, but not routing or querying them. Azure's free tier covers a lab-scale workspace (5 GB/month ingestion free).",
+      "## Create the pipe",
+      "https://portal.azure.com → create a Log Analytics workspace (free tier region defaults are fine)",
+      "https://entra.microsoft.com → Entra ID → Monitoring → Diagnostic settings → Add — check SignInLogs + AuditLogs → Send to Log Analytics → pick your workspace",
+      "Wait ~15 minutes for first events (grab coffee, review yesterday's notes)",
+      "## First KQL",
+      "Workspace → Logs → run: SigninLogs | where TimeGenerated > ago(1d) | summarize count() by AppDisplayName, ResultType | order by count_ desc",
+      "Then find your own failed sign-ins: SigninLogs | where ResultType != 0 | project TimeGenerated, UserPrincipalName, ResultType, ResultDescription",
+      "## Workbooks",
+      "Entra ID → Monitoring → Workbooks → open the built-in 'Sign-in Analysis' — see it's just parameterized KQL; hit Edit on any tile to read the query",
+      "Docs: https://learn.microsoft.com/entra/identity/monitoring-health/howto-configure-diagnostic-settings",
+      "## Watch for",
+      "No data after 30+ min usually means the diagnostic setting saved without categories checked, or you're querying the wrong workspace scope",
+      "## What you learned",
+      "The full telemetry chain — diagnostic settings → workspace → KQL → workbooks — which is one continuous exam scenario"
     ]},
   ]},
   {day:42,label:"Incident Response Drill",tasks:[
@@ -2477,6 +2646,23 @@ const DAYS=[
       "## Goal",
       "By Day 48 — 100% of SC-300 curriculum completed"
     ]},
+    {id:"d46t3",text:"Global Secure Access — Entra's SSE layer (Private + Internet Access)",cat:"study",icon:"🌐",time:"~35 min",diff:2,steps:[
+      "## Why this task now",
+      "Global Secure Access is an entire new top-level SC-300 subsection (April 2026) with zero prior sprint coverage. It's ALSO the network pillar of Zero Trust — which makes it the perfect capstone for today's Zero Trust architecture lab. Licensing is Entra Suite / standalone, so this is a study task with an optional trial.",
+      "## The mental model (write this down)",
+      "GSA = Microsoft's Security Service Edge: identity-aware network access through Microsoft's edge, replacing VPN (Private Access) and filtering web traffic (Internet Access)",
+      "Four moving parts: the GSA CLIENT on devices → Microsoft's edge network → traffic forwarding PROFILES (which traffic to capture) → Conditional Access integration (compliant-network check)",
+      "Private Access = ZTNA to internal apps via App Proxy-style connectors, per-app instead of full-tunnel VPN",
+      "Internet Access = SWG: web category filtering + the dedicated 'Internet Access for Microsoft 365' profile that protects/optimizes M365 traffic specifically",
+      "## Read the overview end-to-end",
+      "https://learn.microsoft.com/entra/global-secure-access/overview-what-is-global-secure-access — pay attention to the three traffic-forwarding profile types; the exam tests which profile captures which traffic",
+      "## Exam drills",
+      "1) Replace legacy VPN for one internal web app → Private Access + connector group. 2) Block a web category for a user group → Internet Access web content filtering policy. 3) Ensure M365 traffic only flows from your tenant's devices → M365 profile + compliant network check in CA",
+      "## Optional hands-on",
+      "Entra admin center → Global Secure Access has a trial activation; installing the client on the Surface and capturing M365 traffic takes ~20 minutes if you want the muscle memory",
+      "## What you learned",
+      "The GSA architecture and profile model — enough to answer every scenario framing in the new exam section"
+    ]},
   ]},
   {day:47,label:"Portfolio Assembly",tasks:[
     {id:"d47t1",text:"Assemble the full portfolio",cat:"career",icon:"📁",time:"~90 min",diff:2,prereq:"d46t1",steps:[
@@ -2525,6 +2711,22 @@ const DAYS=[
       "'When would you use B2B vs B2C?'",
       "## Record and review",
       "Listen back, refine pacing and filler words"
+    ]},
+    {id:"d48t3",text:"App registrations II — API permissions, consent, and app roles",cat:"lab",icon:"🧾",time:"~40 min",diff:3,steps:[
+      "## Why this task now",
+      "SC-300's workload-identities domain tests 'Configure API permissions' and 'Create app roles' — the sprint registered apps for Graph scripting but never went deep on the permission/consent/role model. Content-completion day is the slot.",
+      "## Delegated vs application permissions — the exam's favorite trap",
+      "https://entra.microsoft.com → App registrations → your existing Graph app → API permissions",
+      "Add a DELEGATED permission (User.Read.All) and an APPLICATION permission (Device.Read.All) — say aloud: delegated = acts as the signed-in user (effective = intersection of app + user rights); application = acts as itself, no user, always needs admin consent",
+      "Grant admin consent and watch the Status column flip — then check Enterprise applications → your app → Permissions to see the consent record from the OTHER side",
+      "## Create an app role",
+      "App registrations → your app → App roles → Create: display name 'Report.Reader', allowed member types Users/Groups, value 'Report.Reader'",
+      "Enterprise applications → your app → Users and groups → assign your test user to that role — this is how apps do their OWN RBAC via the roles claim in tokens",
+      "Docs: https://learn.microsoft.com/entra/identity-platform/howto-add-app-roles-in-apps",
+      "## Consent governance",
+      "Entra ID → Enterprise applications → Consent and permissions → review 'User consent settings' — know the three postures (allow all / verified-publisher low-impact / disable) and where the admin consent workflow lives",
+      "## What you learned",
+      "The full app identity chain — registration, permission types, consent surfaces, app roles — the exact 'Plan and implement app registrations' bullets"
     ]},
   ]},
   {day:49,label:"Phase 3 Review",tasks:[
@@ -3097,6 +3299,15 @@ const TaskItem = React.memo(({ task, accent, done, prereqDone, isExp, onToggle, 
 const GIST_FILE = "sprint-progress.json";
 const GIST_DESCRIPTION = "Security Engineering Sprint — progress (private)";
 const SYNC_DEBOUNCE_MS = 2500;
+
+// Supabase account sync. The publishable key is public BY DESIGN (like a URL):
+// security is enforced server-side by Row-Level Security — an authenticated user
+// can only ever read/write their own row. This is not a credential.
+const SUPA_URL = "https://dgqakigyzcakugosrqsb.supabase.co";
+const SUPA_KEY = "sb_publishable_uuVBGD0DsyLsRCu8EA1w4g_o6AKdCof";
+const supa = (typeof window !== "undefined" && window.supabase)
+  ? window.supabase.createClient(SUPA_URL, SUPA_KEY)
+  : null;
 const SNAPSHOT_VERSION = 3; // v1: completed/habitLog/startDate/labRef · v2: + notes · v3: + notesAt (per-note edit timestamps)
 
 const gistFetch = async (token, path, opts = {}) => {
@@ -3235,7 +3446,147 @@ const fmtRelative = (iso) => {
 
 const LS={get(k){try{return JSON.parse(localStorage.getItem(k))}catch{return null}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}},del(k){try{localStorage.removeItem(k)}catch{}}};
 
-function useGistSync({ snapshot, applyRemote }) {
+// Account sync via Supabase: email-code sign-in, one row per user (RLS-guarded),
+// realtime change feed for instant cross-device propagation. Reuses the exact
+// same v3 snapshot format and mergeSnapshots rules as Gist sync.
+function useSupaSync({ snapshot, applyRemote }) {
+  const [session, setSession] = useState(null);
+  const [status, setStatus] = useState({ state: "idle", lastSync: null, error: null });
+  const [hydrated, setHydrated] = useState(false);
+  const debounceRef = React.useRef(null);
+  const lastSentKeyRef = React.useRef(null);
+  const snapshotRef = React.useRef(snapshot);
+  useEffect(() => { snapshotRef.current = snapshot; });
+
+  // Track the auth session (supabase-js persists it in its own storage key).
+  useEffect(() => {
+    if (!supa) return;
+    supa.auth.getSession().then(({ data }) => setSession(data?.session || null)).catch(() => {});
+    const { data: sub } = supa.auth.onAuthStateChange((_evt, s) => setSession(s || null));
+    return () => { try { sub.subscription.unsubscribe(); } catch {} };
+  }, []);
+
+  const userId = session?.user?.id || null;
+
+  const pullMerge = useCallback(async (pushBack) => {
+    const { data, error } = await supa.from("sprint_state").select("data").eq("user_id", userId).maybeSingle();
+    if (error) throw new Error(error.message);
+    const remote = parseSnapshot(data ? JSON.stringify(data.data) : buildSnapshot({}));
+    const merged = mergeSnapshots(snapshotRef.current, remote);
+    applyRemote(merged);
+    const mergedKey = snapshotKey(merged);
+    if (pushBack && mergedKey !== snapshotKey(remote)) {
+      const { error: e2 } = await supa.from("sprint_state").upsert({ user_id: userId, data: JSON.parse(buildSnapshot(merged)) });
+      if (e2) throw new Error(e2.message);
+    }
+    lastSentKeyRef.current = mergedKey;
+  }, [userId, applyRemote]);
+
+  // Hydrate on sign-in: pull, merge with local, push the union back up.
+  useEffect(() => {
+    if (!supa || !userId) { setHydrated(false); lastSentKeyRef.current = null; return; }
+    let cancelled = false;
+    (async () => {
+      setStatus({ state: "syncing", lastSync: null, error: null });
+      try {
+        await pullMerge(true);
+        if (cancelled) return;
+        setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+        setHydrated(true);
+      } catch (e) {
+        if (!cancelled) setStatus({ state: "error", lastSync: null, error: e.message });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [userId, pullMerge]);
+
+  // Debounced push on local changes.
+  useEffect(() => {
+    if (!supa || !userId || !hydrated) return;
+    const key = snapshotKey(snapshot);
+    if (key === lastSentKeyRef.current) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setStatus(s => ({ ...s, state: "syncing", error: null }));
+      try {
+        const { error } = await supa.from("sprint_state").upsert({ user_id: userId, data: JSON.parse(buildSnapshot(snapshot)) });
+        if (error) throw new Error(error.message);
+        lastSentKeyRef.current = key;
+        setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+      } catch (e) {
+        setStatus(s => ({ ...s, state: "error", error: e.message }));
+      }
+    }, SYNC_DEBOUNCE_MS);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [snapshot, userId, hydrated]);
+
+  // Realtime: another device's write arrives here; merge it in. Our own writes
+  // echo back too — the snapshotKey comparison drops them. If the merge differs
+  // from the incoming row, the push effect above converges the union upward.
+  useEffect(() => {
+    if (!supa || !userId) return;
+    const ch = supa.channel("sprint_state_" + userId)
+      .on("postgres_changes", { event: "*", schema: "public", table: "sprint_state", filter: "user_id=eq." + userId }, (payload) => {
+        try {
+          if (!payload.new || !payload.new.data) return;
+          const remote = parseSnapshot(JSON.stringify(payload.new.data));
+          if (snapshotKey(remote) === lastSentKeyRef.current) return;
+          const merged = mergeSnapshots(snapshotRef.current, remote);
+          applyRemote(merged);
+          setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+        } catch {}
+      })
+      .subscribe();
+    return () => { try { supa.removeChannel(ch); } catch {} };
+  }, [userId, applyRemote]);
+
+  const syncNow = useCallback(async () => {
+    if (!supa || !userId) return;
+    setStatus(s => ({ ...s, state: "syncing", error: null }));
+    try {
+      await pullMerge(true);
+      setStatus({ state: "idle", lastSync: new Date().toISOString(), error: null });
+      setHydrated(true);
+    } catch (e) {
+      setStatus(s => ({ ...s, state: "error", error: e.message }));
+    }
+  }, [userId, pullMerge]);
+
+  // Reconnect/visibility triggers, same policy as Gist sync.
+  const lastAutoSupaRef = React.useRef(0);
+  useEffect(() => {
+    if (!supa || !userId) return;
+    const auto = (minGapMs) => {
+      const now = Date.now();
+      if (now - lastAutoSupaRef.current < minGapMs) return;
+      lastAutoSupaRef.current = now;
+      syncNow();
+    };
+    const onOnline = () => auto(5000);
+    const onVisible = () => { if (document.visibilityState === "visible") auto(60000); };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [userId, syncNow]);
+
+  const sendCode = useCallback(async (email) => {
+    if (!supa) throw new Error("Account sync isn't available in this build.");
+    const { error } = await supa.auth.signInWithOtp({ email, options: { shouldCreateUser: true } });
+    if (error) throw new Error(error.message);
+  }, []);
+  const verifyCode = useCallback(async (email, token) => {
+    const { error } = await supa.auth.verifyOtp({ email, token, type: "email" });
+    if (error) throw new Error(error.message);
+  }, []);
+  const signOut = useCallback(async () => { try { await supa.auth.signOut(); } catch {} }, []);
+
+  return { available: !!supa, session, status, syncNow, hydrated, sendCode, verifyCode, signOut };
+}
+
+function useGistSync({ snapshot, applyRemote, paused }) {
   const [cfg, setCfg] = useState(() => LS.get("se-sync") || null);
   const [status, setStatus] = useState({ state: "idle", lastSync: null, error: null });
   const [hydrated, setHydrated] = useState(false);
@@ -3252,7 +3603,7 @@ function useGistSync({ snapshot, applyRemote }) {
 
   // Pull on mount / cfg change — MERGE with local, never clobber offline work.
   useEffect(() => {
-    if (!cfg?.enabled || !cfg?.token || !cfg?.gistId) { setHydrated(false); return; }
+    if (paused || !cfg?.enabled || !cfg?.token || !cfg?.gistId) { setHydrated(false); return; }
     let cancelled = false;
     (async () => {
       setStatus({ state: "syncing", lastSync: null, error: null });
@@ -3276,11 +3627,11 @@ function useGistSync({ snapshot, applyRemote }) {
       }
     })();
     return () => { cancelled = true; };
-  }, [cfg?.enabled, cfg?.gistId, cfg?.token, applyRemote]);
+  }, [paused, cfg?.enabled, cfg?.gistId, cfg?.token, applyRemote]);
 
   // Push debounced
   useEffect(() => {
-    if (!cfg?.enabled || !hydrated) return;
+    if (paused || !cfg?.enabled || !hydrated) return;
     const key = snapshotKey(snapshot);
     if (key === lastSentKeyRef.current) return;
     if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -3295,10 +3646,10 @@ function useGistSync({ snapshot, applyRemote }) {
       }
     }, SYNC_DEBOUNCE_MS);
     return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
-  }, [snapshot, cfg, hydrated]);
+  }, [snapshot, cfg, hydrated, paused]);
 
   const syncNow = useCallback(async () => {
-    if (!cfg?.enabled) return;
+    if (paused || !cfg?.enabled) return;
     setStatus({ state: "syncing", error: null });
     try {
       const { content } = await gistAPI.read(cfg.token, cfg.gistId);
@@ -3312,7 +3663,7 @@ function useGistSync({ snapshot, applyRemote }) {
     } catch (e) {
       setStatus({ state: "error", error: e.message });
     }
-  }, [cfg, applyRemote]);
+  }, [cfg, applyRemote, paused]);
 
   // Re-sync when connectivity returns or the tab becomes visible again, so an
   // offline editing session pushes without needing another edit or a manual tap.
@@ -3320,7 +3671,7 @@ function useGistSync({ snapshot, applyRemote }) {
   // on rapid tab switches; reconnects use a short 5s guard against event bursts.
   const lastAutoRef = React.useRef(0);
   useEffect(() => {
-    if (!cfg?.enabled) return;
+    if (paused || !cfg?.enabled) return;
     const auto = (minGapMs) => {
       const now = Date.now();
       if (now - lastAutoRef.current < minGapMs) return;
@@ -3335,7 +3686,7 @@ function useGistSync({ snapshot, applyRemote }) {
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [cfg?.enabled, syncNow]);
+  }, [paused, cfg?.enabled, syncNow]);
 
   return { cfg, updateCfg, status, syncNow, hydrated };
 }
@@ -3375,6 +3726,60 @@ function SyncBadge({ status, cfg, onClick }) {
         animation: status.state === "syncing" ? "pulse 1s infinite" : "none" }}/>
       {labels[status.state]}
     </button>
+  );
+}
+
+function SupaAuthModal({ supaSync, onClose }) {
+  const m = M_FONT;
+  const [email, setEmail] = useState("");
+  const [code, setCode] = useState("");
+  const [stage, setStage] = useState("email");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const inp = {width:"100%",padding:"11px 12px",background:"#0B1120",border:"1px solid #1E293B",borderRadius:8,color:"#E2E8F0",fontFamily:m,fontSize:13,outline:"none",boxSizing:"border-box"};
+  const send = async () => {
+    if (!email.trim()) { setErr("Enter your email."); return; }
+    setBusy(true); setErr("");
+    try { await supaSync.sendCode(email.trim()); setStage("code"); }
+    catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+  const verify = async () => {
+    if (!code.trim()) { setErr("Enter the 6-digit code."); return; }
+    setBusy(true); setErr("");
+    try { await supaSync.verifyCode(email.trim(), code.trim()); onClose(); }
+    catch (e) { setErr(e.message); }
+    finally { setBusy(false); }
+  };
+  return (
+    <div role="dialog" aria-modal="true" aria-label="Sign in for account sync" style={{position:"fixed",inset:0,background:"rgba(2,6,17,0.82)",zIndex:60,display:"flex",alignItems:"center",justifyContent:"center",padding:18}}>
+      <div style={{width:"100%",maxWidth:380,background:"#111827",border:"1px solid #1E293B",borderRadius:14,padding:18}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+          <div style={{fontSize:13,fontWeight:800,color:"#F1F5F9",letterSpacing:0.2}}>✉️ Account sync</div>
+          <button onClick={onClose} aria-label="Close sign-in dialog" style={{background:"transparent",border:"none",color:"#64748B",fontSize:15,cursor:"pointer",padding:"2px 6px"}}>✕</button>
+        </div>
+        {stage==="email" ? (
+          <>
+            <div style={{fontSize:12,color:"#94A3B8",lineHeight:1.55,marginBottom:12}}>
+              Enter your email and we'll send a 6-digit sign-in code. No password. Your progress syncs to your account and follows you across devices in real time.
+            </div>
+            <input type="email" inputMode="email" autoComplete="email" placeholder="you@example.com" value={email} onChange={e=>setEmail(e.target.value)} aria-label="Email address" style={inp}/>
+            {err && <div style={{fontSize:11,color:"#EF4444",fontFamily:m,marginTop:8,wordBreak:"break-word"}}>⚠️ {err}</div>}
+            <button onClick={send} disabled={busy} style={{width:"100%",padding:"11px",background:"#06B6D4",border:"none",borderRadius:8,color:"#0B1120",fontSize:12.5,fontFamily:m,cursor:"pointer",fontWeight:800,letterSpacing:0.5,marginTop:12,opacity:busy?0.6:1}}>{busy?"Sending...":"Send code"}</button>
+          </>
+        ) : (
+          <>
+            <div style={{fontSize:12,color:"#94A3B8",lineHeight:1.55,marginBottom:12}}>
+              Code sent to <strong style={{color:"#E5E7EB"}}>{email}</strong>. Check spam if it doesn't arrive within a minute.
+            </div>
+            <input inputMode="numeric" autoComplete="one-time-code" placeholder="6-digit code" value={code} onChange={e=>setCode(e.target.value)} aria-label="Six digit sign-in code" style={inp}/>
+            {err && <div style={{fontSize:11,color:"#EF4444",fontFamily:m,marginTop:8,wordBreak:"break-word"}}>⚠️ {err}</div>}
+            <button onClick={verify} disabled={busy} style={{width:"100%",padding:"11px",background:"#06B6D4",border:"none",borderRadius:8,color:"#0B1120",fontSize:12.5,fontFamily:m,cursor:"pointer",fontWeight:800,letterSpacing:0.5,marginTop:12,opacity:busy?0.6:1}}>{busy?"Verifying...":"Verify & sign in"}</button>
+            <button onClick={()=>{setStage("email");setErr("");setCode("");}} style={{width:"100%",padding:"8px",background:"transparent",border:"none",color:"#64748B",fontSize:11,fontFamily:m,cursor:"pointer",marginTop:6}}>Use a different email</button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -3568,8 +3973,16 @@ function App(){
     setNotesAt(remote.notesAt || {}); LS.set("se-notesat", remote.notesAt || {});
   }, []);
 
-  const sync = useGistSync({ snapshot, applyRemote });
+  const supaSync = useSupaSync({ snapshot, applyRemote });
+  const supaActive = !!supaSync.session;
+  const sync = useGistSync({ snapshot, applyRemote, paused: supaActive });
   const [showSyncModal, setShowSyncModal] = useState(false);
+  const [showSupaModal, setShowSupaModal] = useState(false);
+
+  const signOutSupa = useCallback(() => {
+    if (!confirm("Sign out of account sync on this device? Local progress stays on this device; it keeps syncing on devices that stay signed in.")) return;
+    supaSync.signOut();
+  }, [supaSync]);
 
   const disconnectSync = useCallback(() => {
     if (!confirm("Disconnect this device from cloud sync? Local progress stays. The token is removed from this device only — the gist itself is not deleted.")) return;
@@ -3658,7 +4071,7 @@ function App(){
           <div>
             <div style={{fontSize:10,fontFamily:m,color:"#475569",letterSpacing:3,textTransform:"uppercase",fontWeight:600}}>Mission Control</div>
             <h1 style={{fontSize:20,fontWeight:800,margin:"4px 0 0",background:"linear-gradient(135deg,#06B6D4,#8B5CF6)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent",letterSpacing:-0.3}}>Security Engineering Sprint</h1>
-            <SyncBadge status={sync.status} cfg={sync.cfg} onClick={() => sync.syncNow()} />
+            <SyncBadge status={supaActive?supaSync.status:sync.status} cfg={supaActive?{enabled:true}:sync.cfg} onClick={() => supaActive?supaSync.syncNow():sync.syncNow()} />
           </div>
           {startDate&&(
             <div style={{textAlign:"right"}}>
@@ -3717,7 +4130,7 @@ function App(){
 
         {/* BACKUP NUDGE — only when: sprint started, no Gist sync configured,
             real progress exists, and no manual backup in the last 7 days */}
-        {startDate&&!sync.cfg&&!nudgeHidden&&doneTasks>0&&(!lastExport||Date.now()-new Date(lastExport).getTime()>7*86400000)&&(
+        {startDate&&!sync.cfg&&!supaActive&&!nudgeHidden&&doneTasks>0&&(!lastExport||Date.now()-new Date(lastExport).getTime()>7*86400000)&&(
           <BackupNudge lastExport={lastExport} onExport={exportProgress} onDismiss={()=>setNudgeHidden(true)}/>
         )}
 
@@ -4142,18 +4555,49 @@ function App(){
             <div style={{marginTop:18,padding:"14px",background:"#151D2E",border:"1px solid #1E293B",borderRadius:10}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
                 <div style={{fontSize:11,fontFamily:m,color:"#94A3B8",letterSpacing:1.5,textTransform:"uppercase",fontWeight:700}}>🔄 Cloud Sync</div>
-                {sync.cfg?.enabled && <SyncBadge status={sync.status} cfg={sync.cfg} onClick={() => sync.syncNow()} />}
+                {(supaActive || sync.cfg?.enabled) && <SyncBadge status={supaActive?supaSync.status:sync.status} cfg={{enabled:true}} onClick={() => supaActive?supaSync.syncNow():sync.syncNow()} />}
               </div>
 
-              {!sync.cfg?.enabled ? (
+              {supaActive ? (
+                <>
+                  <div style={{fontSize:12,color:"#94A3B8",lineHeight:1.55,marginBottom:10}}>
+                    Signed in as <strong style={{color:"#E5E7EB"}}>{supaSync.session?.user?.email}</strong>. Changes sync to your account in real time — sign in with the same email on any device to pick up instantly.
+                  </div>
+                  {supaSync.status.error && (
+                    <div style={{fontSize:11,color:"#EF4444",fontFamily:m,marginBottom:10,padding:"6px 10px",background:"#EF444415",borderRadius:6,wordBreak:"break-word"}}>
+                      ⚠️ {supaSync.status.error}
+                    </div>
+                  )}
+                  <div style={{display:"flex",gap:8}}>
+                    <button onClick={() => supaSync.syncNow()} disabled={supaSync.status.state === "syncing"} style={{
+                      flex:1,padding:"10px",background:"#06B6D415",border:"1px solid #06B6D440",borderRadius:8,
+                      color:"#06B6D4",fontSize:11.5,fontFamily:m,cursor:"pointer",fontWeight:700,letterSpacing:0.5,
+                      opacity:supaSync.status.state === "syncing" ? 0.5 : 1
+                    }}>{supaSync.status.state === "syncing" ? "Syncing..." : "🔄 Sync now"}</button>
+                    <button onClick={signOutSupa} style={{
+                      padding:"10px 14px",background:"transparent",border:"1px solid #EF444433",borderRadius:8,
+                      color:"#EF4444",fontSize:11,fontFamily:m,cursor:"pointer",fontWeight:600
+                    }}>Sign out</button>
+                  </div>
+                  {sync.cfg?.enabled && (
+                    <div style={{fontSize:10.5,color:"#64748B",fontFamily:m,marginTop:10,lineHeight:1.5}}>
+                      Gist sync is paused while you're signed in. Signing out resumes it.
+                    </div>
+                  )}
+                </>
+              ) : !sync.cfg?.enabled ? (
                 <>
                   <div style={{fontSize:12,color:"#94A3B8",lineHeight:1.55,marginBottom:12}}>
-                    Sync your progress automatically across devices via a private GitHub Gist. Free. Token stays on this device.
+                    Sign in with your email — a 6-digit code, no password — and your progress follows you across devices in real time.
                   </div>
-                  <button onClick={() => setShowSyncModal(true)} style={{
+                  <button onClick={() => setShowSupaModal(true)} style={{
                     width:"100%",padding:"11px",background:"#06B6D4",border:"none",borderRadius:8,
                     color:"#0B1120",fontSize:12.5,fontFamily:m,cursor:"pointer",fontWeight:800,letterSpacing:0.5
-                  }}>☁️ Set up cloud sync</button>
+                  }}>✉️ Sign in with email</button>
+                  <button onClick={() => setShowSyncModal(true)} style={{
+                    width:"100%",padding:"9px",background:"transparent",border:"1px solid #1E293B",borderRadius:8,
+                    color:"#64748B",fontSize:11,fontFamily:m,cursor:"pointer",fontWeight:600,marginTop:8
+                  }}>Use GitHub Gist instead (legacy)</button>
                 </>
               ) : (
                 <>
@@ -4239,6 +4683,10 @@ function App(){
           onClose={() => setShowSyncModal(false)}
           onSetup={(cfg) => { sync.updateCfg(cfg); }}
         />
+      )}
+
+      {showSupaModal && (
+        <SupaAuthModal supaSync={supaSync} onClose={() => setShowSupaModal(false)} />
       )}
     </div>
   );

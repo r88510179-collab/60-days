@@ -62,6 +62,10 @@ out = out.replace(CDN_RDOM, '<script src="vendor/react-dom.production.min.js"></
 once(out, CDN_BABEL, "babel CDN tag");
 out = out.replace(CDN_BABEL, "");
 
+const CDN_SUPA = '<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.110.3/dist/umd/supabase.js"></script>';
+once(out, CDN_SUPA, "supabase CDN tag");
+out = out.replace(CDN_SUPA, '<script src="vendor/supabase.js"></script>');
+
 // ---- 2b. externalize the inline SW-registration script -----------------------
 // The only inline <script> in the source. Moving it to a file lets the CSP use
 // script-src 'self' with no inline allowances and no hash maintenance.
@@ -81,7 +85,7 @@ once(swSrc, SHELL_LINE, "sw shell line");
 
 const swOut = swSrc
   .replace(CACHE_LINE, `const CACHE = "se-sprint-${hash}"; // content-stamped by build/build.js`)
-  .replace(SHELL_LINE, 'const SHELL = ["./", "./index.html", "./app.js", "./register-sw.js", "./manifest.json", "./vendor/react.production.min.js", "./vendor/react-dom.production.min.js"];');
+  .replace(SHELL_LINE, 'const SHELL = ["./", "./index.html", "./app.js", "./register-sw.js", "./manifest.json", "./vendor/react.production.min.js", "./vendor/react-dom.production.min.js", "./vendor/supabase.js"];');
 
 // ---- 4. emit dist/ ------------------------------------------------------------
 fs.rmSync(DIST, { recursive: true, force: true });
@@ -93,7 +97,7 @@ fs.writeFileSync(path.join(DIST, "register-sw.js"), REG_BODY);
 for (const f of ["manifest.json", "icon-192.png", "icon-512.png"]) {
   fs.copyFileSync(path.join(ROOT, f), path.join(DIST, f));
 }
-for (const f of ["react.production.min.js", "react-dom.production.min.js"]) {
+for (const f of ["react.production.min.js", "react-dom.production.min.js", "supabase.js"]) {
   fs.copyFileSync(path.join(ROOT, "vendor", f), path.join(DIST, "vendor", f));
 }
 

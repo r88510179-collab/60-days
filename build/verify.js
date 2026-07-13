@@ -31,7 +31,7 @@ function check(cond, label) {
 // tasks across 60 days with a VARIABLE per-day count (twenty days carry three
 // tasks, forty carry two) — so the expected set is derived from the id:"..."
 // declarations, never hardcoded as dXt1/dXt2.
-const TASK_COUNT = 140;
+const TASK_COUNT = 152; // 140 original + 12 gap-closure tasks (April 2026 exam refresh)
 const REQUIRED_KEYS = ["se-done", "se-hab", "se-start", "se-ref", "se-sync", "se-notes", "se-notesat", "se-exported"];
 const FORBIDDEN_DAYKEY = /toISOString\(\)\.slice\(0,\s*10\)/;
 
@@ -68,7 +68,7 @@ checkInvariants(srcHtml, "src ");
 
 // ---- dist files exist ----
 const DIST_FILES = ["index.html", "app.js", "sw.js", "register-sw.js", "manifest.json", "icon-192.png", "icon-512.png",
-  path.join("vendor", "react.production.min.js"), path.join("vendor", "react-dom.production.min.js")];
+  path.join("vendor", "react.production.min.js"), path.join("vendor", "react-dom.production.min.js"), path.join("vendor", "supabase.js")];
 for (const f of DIST_FILES) check(fs.existsSync(path.join(DIST, f)), `dist D1: ${f} exists`);
 if (failures) { console.error(`\n${failures} check(s) failed — dist incomplete, aborting.`); process.exit(1); }
 
@@ -93,6 +93,7 @@ check(distHtml.includes('src="vendor/react.production.min.js"'), "dist D2d: load
 check(distHtml.includes('src="vendor/react-dom.production.min.js"'), "dist D2e: loads vendored react-dom");
 check((distHtml.match(/<script(?![^>]*\bsrc=)/g) || []).length === 0, "dist D2f: zero inline scripts (CSP script-src 'self' safe)");
 check(distHtml.includes('src="register-sw.js"'), "dist D2g: loads externalized SW registration");
+check(distHtml.includes('src="vendor/supabase.js"') && !distHtml.includes("jsdelivr"), "dist D2h: loads vendored supabase-js, no jsDelivr");
 
 // ---- dist/sw.js ----
 const distSw = fs.readFileSync(path.join(DIST, "sw.js"), "utf8");

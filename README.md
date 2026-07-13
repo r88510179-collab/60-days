@@ -20,7 +20,7 @@ dist/       (what Vercel serves — no Babel, no CDNs, no inline scripts)
  ├─ app.js                JSX compiled once at build time
  ├─ register-sw.js        SW registration, externalized for CSP script-src 'self'
  ├─ sw.js                 cache name content-stamped per build
- ├─ vendor/react*.js      React/ReactDOM 18.2.0 UMD, hash-verified from npm
+ ├─ vendor/*.js           React/ReactDOM 18.2.0 + supabase-js 2.110.3 UMD, hash-verified from npm
  └─ manifest.json, icons
 ```
 
@@ -62,8 +62,14 @@ and behaves.
 
 ## Sync design
 
-Primary: **GitHub Gist cloud sync** (snapshot v3), pull-on-mount + debounced
-push + reconnect/visibility triggers. Merge rules:
+Primary: **account sync** (Supabase) — email sign-in with a 6-digit code (no
+password, no redirect URLs), one RLS-guarded row per user, debounced push, and
+a realtime change feed so other signed-in devices update within seconds. First
+sign-in uploads the merged local state automatically. Legacy: **GitHub Gist
+sync** remains fully supported and is paused (not removed) while an account
+session is active — signing out resumes it. Both providers share the identical
+snapshot v3 format, pull-on-mount + debounced push + reconnect/visibility
+triggers, and these merge rules:
 
 - `completed` / `habitLog`: union, local wins per key — done-flags can't be lost
 - `notes`: per-task **newer-edit-wins** via `notesAt` timestamps; deletions
@@ -78,14 +84,20 @@ manual export.
 
 ## Security posture
 
-- Vendored React/ReactDOM verified against npm's published sha512 before commit
-  (closes the SRI finding — no third-party script hosts at runtime)
+- Vendored React/ReactDOM and supabase-js verified against npm's published
+  sha512 before commit (closes the SRI finding — no third-party script hosts
+  at runtime)
 - No runtime JSX compilation, no `eval`-class dependencies in production
 - CSP: `script-src 'self'` with zero inline scripts, `frame-ancestors 'none'`,
   `object-src 'none'`; plus `nosniff`, `Referrer-Policy`, `Permissions-Policy`
   (see `vercel.json`; HSTS is provided by the platform on vercel.app domains)
 - Gist PAT is stored in `localStorage` on the device only — use a fine-grained
   token scoped to **gists only**
+- The Supabase URL + publishable key in the source are public **by design**
+  (like a hostname, not a credential): authorization is enforced server-side by
+  Row-Level Security — an authenticated user can only ever read/write their own
+  row, the anon role has no policies at all, and Supabase's security advisor
+  reports zero findings on the schema
 
 ## Data
 
@@ -93,3 +105,7 @@ All state is client-side `localStorage` (eight `se-*` keys above). Existing
 keys and task IDs are never renamed across releases, so progress survives every
 update. Tenant identifiers may be stored locally in Lab Reference; they are
 identifiers, not credentials, and never appear in this repo.
+
+When signed in to account sync, supabase-js keeps its session in its own
+library-managed localStorage key (`sb-…-auth-token`), separate from — and in
+addition to — the eight `se-*` keys above.

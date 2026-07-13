@@ -22,6 +22,7 @@ function boot(seed) {
   for (const [k, v] of Object.entries(seed)) w.localStorage.setItem(k, JSON.stringify(v));
   w.eval(read(path.join("vendor", "react.production.min.js")));
   w.eval(read(path.join("vendor", "react-dom.production.min.js")));
+  w.eval(read(path.join("vendor", "supabase.js")));   // production fidelity: client constructs at module scope
   w.eval(read("app.js"));
   return w;
 }
@@ -64,6 +65,22 @@ const settle = (ms = 300) => new Promise((r) => setTimeout(r, ms));
     ok(html.includes("last 14 days"), "Stats view: habit heatmap renders");
   } else { n += 3; bad += 3; }
 
+  // --- Case 5: Phases view offers account sync first, gist as legacy
+  w = boot({ "se-start": "2026-07-01", "se-done": { d1t1: true } });
+  await settle();
+  const phasesBtn = [...w.document.querySelectorAll("button")].find((b) => b.textContent === "Phases");
+  ok(!!phasesBtn, "Phases tab present");
+  if (phasesBtn) {
+    phasesBtn.click();
+    await settle(200);
+    const html5 = w.document.getElementById("root").innerHTML;
+    ok(html5.includes("Sign in with email"), "sync card: account sign-in is the primary option");
+    ok(html5.includes("Use GitHub Gist instead"), "sync card: gist offered as legacy path");
+  } else { n += 2; bad += 2; }
+
   if (bad) { console.error(`\n${bad}/${n} render tests FAILED.`); process.exit(1); }
   console.log(`\nAll ${n} render tests PASS.`);
+  // supabase-js starts auth auto-refresh timers inside each jsdom window,
+  // which keep the event loop alive - exit explicitly on success.
+  process.exit(0);
 })().catch((e) => { console.error("TEST RUN ERROR: " + e.message); process.exit(1); });

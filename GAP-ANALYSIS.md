@@ -10,6 +10,12 @@ manual review. Zero mentions = gap. One to three mentions = flagged as thin
 A keyword scan can miss synonyms; treat this as a high-confidence screen, not
 a formal audit.
 
+**Status (2026-07-13):** all 12 remediation tasks below are now authored to the
+gold-standard format and inserted into the curriculum — **140 → 152 tasks**,
+invariant gate updated to `TASK_COUNT = 152`. Placement: d15t3, d19t3, d22t3,
+d24t3, d26t3 (MD-102) and d31t3, d33t3, d36t3, d40t3, d41t3, d46t3, d48t3
+(SC-300).
+
 **Bottom line:** Core coverage is strong — Autopilot (73 mentions), Conditional
 Access (31), MFA/Authenticator (83), compliance (18), PIM (25), BitLocker (39),
 entitlement management (12), break-glass (10) are all well represented. The
@@ -76,8 +82,8 @@ current exam with zero curriculum presence.
 
 ## Recommended remediation
 
-Twelve added or upgraded tasks would close every zero-mention gap at the
-right depth for the exam:
+Twelve tasks close every zero-mention gap at the right depth for the exam
+(all now inserted — day placements in the status note at the top):
 
 1. **ODT/OCT + M365 Apps admin center** — hands-on deploy task (MD, free)
 2. **SSPR end-to-end** — enable, register, reset, audit (SC, free)
